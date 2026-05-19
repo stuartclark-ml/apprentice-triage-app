@@ -4,4 +4,18 @@ version = "0.1.0"
 description = "Apprenticeship vacancy triage tool — FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi[standard]>=0.115",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+    "mypy>=1.10",
+    "pre-commit>=3.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
