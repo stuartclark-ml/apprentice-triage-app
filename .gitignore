@@ -7,6 +7,9 @@ wheels/
 *.egg-info
 
 # Virtual environments
+.env
 .venv
 # Local session notes
 SESSION_NOTES.md
+
+.pytest_cache
