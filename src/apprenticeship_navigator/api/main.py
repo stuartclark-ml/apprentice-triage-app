@@ -9,7 +9,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Apprenticeship Navigator",
         version="0.1.0",
-        debug=settings.app_env == "development",  # type: ignore[attr-defined]
+        debug=settings.app_env == "development",
     )
 
     app.add_middleware(
