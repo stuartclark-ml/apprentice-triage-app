@@ -10,5 +10,5 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/health", response_model=HealthResponse)
-def health() -> HealthResponse:
+def health_check() -> HealthResponse:
     return HealthResponse(status="ok")
