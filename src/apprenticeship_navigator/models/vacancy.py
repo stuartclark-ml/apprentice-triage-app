@@ -1,7 +1,8 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
 class WageType(str, Enum):
@@ -23,7 +24,13 @@ class QualificationWeighting(str, Enum):
     desired = "Desired"
 
 
-class VacancyWage(BaseModel):
+class CamelModel(BaseModel):
+    """Base for models whose incoming data uses camelCase keys."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class VacancyWage(CamelModel):
     wage_type: WageType | None = None
     wage_amount: float | None = None
     wage_unit: WageUnit | None = None
@@ -31,7 +38,7 @@ class VacancyWage(BaseModel):
     working_week_description: str | None = None
 
 
-class VacancyAddress(BaseModel):
+class VacancyAddress(CamelModel):
     address_line1: str | None = None
     address_line2: str | None = None
     address_line3: str | None = None
@@ -41,7 +48,7 @@ class VacancyAddress(BaseModel):
     longitude: float | None = None
 
 
-class VacancyCourse(BaseModel):
+class VacancyCourse(CamelModel):
     lars_code: int | None = None
     title: str | None = None
     level: int | None = None
@@ -49,14 +56,14 @@ class VacancyCourse(BaseModel):
     type: str | None = None
 
 
-class VacancyQualification(BaseModel):
+class VacancyQualification(CamelModel):
     weighting: QualificationWeighting | None = None
     qualification_type: str | None = None
     subject: str | None = None
     grade: str | None = None
 
 
-class Vacancy(BaseModel):
+class Vacancy(CamelModel):
     title: str | None = None
     description: str | None = None
     number_of_positions: int | None = None
@@ -94,8 +101,8 @@ class Vacancy(BaseModel):
     company_benefits_information: str | None = None
 
 
-class VacancySearchResponse(BaseModel):
+class VacancySearchResponse(CamelModel):
     total: int | None = None
-    totalFiltered: int | None = None
-    totalPages: int | None = None
+    total_filtered: int | None = None
+    total_pages: int | None = None
     vacancies: list[Vacancy] = []
