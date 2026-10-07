@@ -11,7 +11,7 @@ async def main() -> None:
     result = await graph.ainvoke({"messages": [question]})
 
     print(f"Messages in final state: {len(result['messages'])}")
-    print(result["messages"][-1].content)
+    print(result["messages"][-1].text)
 
 
 if __name__ == "__main__":
