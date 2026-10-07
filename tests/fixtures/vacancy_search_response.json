@@ -1,0 +1,48 @@
+{
+  "vacancies": [
+    {
+      "title": "Childcare Level 3 apprenticeship",
+      "numberOfPositions": 1,
+      "postedDate": "2025-09-10T14:09:16.493Z",
+      "closingDate": "2026-11-30T23:59:59Z",
+      "startDate": "2026-12-14T00:00:00Z",
+      "wage": {
+        "wageType": "ApprenticeshipMinimum",
+        "wageUnit": "Annually",
+        "wageAdditionalInformation": "\u00a314,976 a year",
+        "workingWeekDescription": "Monday to Friday.\r\n\r\n4 days a week (to be confirmed), 07.45 to 18.00."
+      },
+      "hoursPerWeek": 36.0,
+      "expectedDuration": "1 Year 6 Months",
+      "addresses": [
+        {
+          "addressLine1": "1a",
+          "addressLine2": "Dunbar Avenue",
+          "addressLine3": "London",
+          "postcode": "SW16 4SB",
+          "latitude": 51.40564,
+          "longitude": -0.11516
+        }
+      ],
+      "distance": 6.69410372860631,
+      "employerName": "PLAYHOUSE MONTESSORI LIMITED",
+      "course": {
+        "larsCode": 430,
+        "title": "Early years educator (level 3)",
+        "level": 3,
+        "route": "Education and early years",
+        "type": "Standard"
+      },
+      "apprenticeshipLevel": "Advanced",
+      "providerName": "NORTH WALES TRAINING LTD.",
+      "ukprn": 10004716,
+      "isDisabilityConfident": false,
+      "vacancyUrl": "https://www.findapprenticeship.service.gov.uk/apprenticeship/reference/1000341436",
+      "vacancyReference": "1000341436",
+      "isNationalVacancy": false
+    }
+  ],
+  "total": 1,
+  "totalFiltered": 1,
+  "totalPages": 1
+}

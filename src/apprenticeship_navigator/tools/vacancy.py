@@ -1,27 +1,40 @@
 import httpx
 from langchain_core.tools import tool
 
-from apprenticeship_navigator.models.vacancy import Vacancy
+from apprenticeship_navigator.models.vacancy import Vacancy, VacancyWage
 from apprenticeship_navigator.services.postcode_api import get_postcode_lookup
 from apprenticeship_navigator.services.vacancy_api import search_vacancies
 
 
+def _wage_text(wage: VacancyWage | None) -> str:
+    """Prefer the numeric amount; fall back to the service's own wording."""
+    if wage is None:
+        return "wage not stated"
+    if wage.wage_amount is not None:
+        text = f"£{wage.wage_amount:,.0f}"
+        if wage.wage_unit:
+            text += f" {wage.wage_unit.value.lower()}"
+        return text
+    if wage.wage_additional_information:
+        return wage.wage_additional_information
+    return "wage not stated"
+
+
 def _summarise(vacancy: Vacancy) -> str:
     """One line per vacancy: only the fields the model needs."""
-    wage_text = "wage not stated"
-    if vacancy.wage and vacancy.wage.wage_amount is not None:
-        wage_text = f"£{vacancy.wage.wage_amount:,.0f}"
-        if vacancy.wage.wage_unit:
-            wage_text += f" {vacancy.wage.wage_unit.value.lower()}"
-
     closing = (
         vacancy.closing_date.date().isoformat() if vacancy.closing_date else "unknown"
+    )
+    distance = (
+        f"{vacancy.distance:.1f} miles"
+        if vacancy.distance is not None
+        else "distance unknown"
     )
 
     return (
         f"- {vacancy.title} | {vacancy.employer_name} | "
-        f"level {vacancy.apprenticeship_level} | {wage_text} | "
-        f"{vacancy.distance} miles | closes {closing} | {vacancy.vacancy_url}"
+        f"level {vacancy.apprenticeship_level} | {_wage_text(vacancy.wage)} | "
+        f"{distance} | closes {closing} | {vacancy.vacancy_url}"
     )
 
 
