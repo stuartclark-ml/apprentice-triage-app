@@ -4,6 +4,7 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
 from apprenticeship_navigator.models.postcode import PostcodeLookup
+from apprenticeship_navigator.models.vacancy import Vacancy
 
 
 class AgentState(TypedDict):
@@ -13,3 +14,6 @@ class AgentState(TypedDict):
     postcode: str
     location: PostcodeLookup | None
     location_error: str | None
+    distance_in_miles: int
+    vacancies: list[Vacancy]
+    vacancy_error: str | None
