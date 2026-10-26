@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import httpx
 import pytest
 import respx
@@ -19,6 +21,7 @@ async def test_locate_records_not_found_instead_of_raising():
         "distance_in_miles": 10,
         "vacancies": [],
         "vacancy_error": None,
+        "arrive_by": datetime(2026, 10, 27, 9, 0),
     }
     with respx.mock:
         respx.get("https://api.postcodes.io/postcodes/ZZ999ZZ").mock(
@@ -40,6 +43,7 @@ async def test_locate_stores_location_on_success():
         "distance_in_miles": 10,
         "vacancies": [],
         "vacancy_error": None,
+        "arrive_by": datetime(2026, 10, 27, 9, 0),
     }
     with respx.mock:
         respx.get("https://api.postcodes.io/postcodes/SW1A1AA").mock(
@@ -81,6 +85,7 @@ async def test_find_vacancies_stores_real_reply(
         "distance_in_miles": 10,
         "vacancies": [],
         "vacancy_error": "left over from an earlier run",
+        "arrive_by": datetime(2026, 10, 27, 9, 0),
     }
     with respx.mock:
         respx.get(

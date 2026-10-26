@@ -1,4 +1,5 @@
 from typing import Annotated, TypedDict
+from datetime import datetime
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
@@ -17,3 +18,4 @@ class AgentState(TypedDict):
     distance_in_miles: int
     vacancies: list[Vacancy]
     vacancy_error: str | None
+    arrive_by: datetime
