@@ -1,4 +1,5 @@
-from apprenticeship_navigator.agents.routing import feasibility, Feasibility
+from apprenticeship_navigator.agents.routing import feasibility
+from apprenticeship_navigator.models.transport import Feasibility
 import pytest
 
 

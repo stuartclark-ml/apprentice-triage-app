@@ -1,6 +1,4 @@
-from typing import Literal
-
-Feasibility = Literal["FEASIBLE", "MARGINAL", "INFEASIBLE"]
+from apprenticeship_navigator.models.transport import Feasibility
 
 FEASIBLE_MAX_MINUTES = 60
 MARGINAL_MAX_MINUTES = 90

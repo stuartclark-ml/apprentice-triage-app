@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from apprenticeship_navigator.models.vacancy import CamelModel
 
@@ -26,3 +27,6 @@ class Journey(CamelModel):
 
 class JourneyPlannerResponse(CamelModel):
     journeys: list[Journey] = []
+
+
+Feasibility = Literal["FEASIBLE", "MARGINAL", "INFEASIBLE"]
