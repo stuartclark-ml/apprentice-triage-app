@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from apprenticeship_navigator.models.vacancy import CamelModel
+from pydantic import BaseModel
+
+from apprenticeship_navigator.models.vacancy import CamelModel, Vacancy
 
 
 class TransportMode(CamelModel):
@@ -30,3 +32,9 @@ class JourneyPlannerResponse(CamelModel):
 
 
 Feasibility = Literal["FEASIBLE", "MARGINAL", "INFEASIBLE"]
+
+
+class VacancyJourney(BaseModel):
+    vacancy: Vacancy
+    journey: Journey | None = None
+    feasibility: Feasibility | None = None
