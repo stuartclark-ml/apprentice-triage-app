@@ -6,11 +6,13 @@ import respx
 from typing import Any
 
 from apprenticeship_navigator.agents.nodes import (
-    locate,
-    find_vacancies,
-    vacancy_coordinates,
+    check_transport,
     check_vacancy,
+    find_vacancies,
+    locate,
+    vacancy_coordinates,
 )
+
 from apprenticeship_navigator.agents.state import AgentState
 from apprenticeship_navigator.models.postcode import PostcodeLookup
 from apprenticeship_navigator.models.vacancy import (
@@ -185,3 +187,56 @@ async def test_check_vacancy_without_coordinates_skips_service() -> None:
 
     assert result.journey is None
     assert result.feasibility is None
+
+
+LOCATION = PostcodeLookup.model_validate(
+    {
+        "postcode": "SW1A 1AA",
+        "latitude": 51.501,
+        "longitude": -0.1415,
+        "lsoa": "Westminster 018C",
+    }
+)
+
+
+def transport_state(vacancies: list[Vacancy]) -> AgentState:
+    """Build a full state with the given vacancies; everything else fixed."""
+    return {
+        "messages": [],
+        "postcode": "SW1A1AA",
+        "location": LOCATION,
+        "location_error": None,
+        "distance_in_miles": 10,
+        "vacancies": vacancies,
+        "vacancy_error": None,
+        "arrive_by": ARRIVE_BY,
+        "vacancy_journeys": [],
+        "transport_status": "ok",
+    }
+
+
+@pytest.mark.asyncio
+async def test_check_transport_degraded_when_every_check_fails() -> None:
+    with respx.mock:
+        update = await check_transport(
+            transport_state([Vacancy(), Vacancy(), Vacancy()])
+        )
+
+    assert update["transport_status"] == "degraded"
+    assert len(update["vacancy_journeys"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_check_transport_ok_when_one_check_succeeds(
+    journey_success_payload: dict[str, Any],
+) -> None:
+    with respx.mock:
+        respx.get(TRANSPORT_URL).mock(
+            return_value=httpx.Response(200, json=journey_success_payload)
+        )
+        state = transport_state([Vacancy(), VACANCY, Vacancy(), VACANCY])
+        update = await check_transport(state)
+
+    assert update["transport_status"] == "ok"
+    assert len(update["vacancy_journeys"]) == 3
+    assert update["vacancy_journeys"][1].feasibility == "FEASIBLE"

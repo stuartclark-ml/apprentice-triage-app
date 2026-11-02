@@ -97,3 +97,24 @@ async def check_vacancy(
     return VacancyJourney(
         vacancy=vacancy, journey=fastest, feasibility=feasibility(minutes)
     )
+
+
+MAX_TRANSPORT_CHECKS = 3
+
+
+async def check_transport(state: AgentState) -> dict[str, list[VacancyJourney] | str]:
+    """Check journeys for up to three vacancies; degraded only if every check fails."""
+    location = state["location"]
+    if location is None:
+        return {"vacancy_journeys": [], "transport_status": "degraded"}
+    origin = (location.latitude, location.longitude)
+    async with httpx.AsyncClient() as client:
+        journeys = [
+            await check_vacancy(vacancy, origin, state["arrive_by"], client)
+            for vacancy in state["vacancies"][:MAX_TRANSPORT_CHECKS]
+        ]
+    all_failed = bool(journeys) and all(j.feasibility is None for j in journeys)
+    return {
+        "vacancy_journeys": journeys,
+        "transport_status": "degraded" if all_failed else "ok",
+    }
