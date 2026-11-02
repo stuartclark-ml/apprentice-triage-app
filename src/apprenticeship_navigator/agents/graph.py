@@ -1,44 +1,33 @@
 from typing import Any
 
-from langchain_core.messages import BaseMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import START, StateGraph
+from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import ToolNode, tools_condition
 
-from apprenticeship_navigator.agents.state import AgentState
-from apprenticeship_navigator.config import settings
-from apprenticeship_navigator.tools.vacancy import search_apprenticeship_vacancies
-
-SYSTEM_PROMPT = (
-    "You help people in England find apprenticeship vacancies. "
-    "When the user gives a postcode, use the search tool. "
-    "Only report vacancies the tool returned; never invent any. "
-    "If no postcode is given, ask for one."
+from apprenticeship_navigator.agents.nodes import (
+    check_transport,
+    explain,
+    find_vacancies,
+    locate,
+    plain_ending,
 )
-
-TOOLS = [search_apprenticeship_vacancies]
+from apprenticeship_navigator.agents.routing import route_after_transport
+from apprenticeship_navigator.agents.state import AgentState
 
 
 def build_graph() -> CompiledStateGraph[Any]:
-    """Build the agent-and-tools loop. Requires GOOGLE_API_KEY."""
-    if settings.google_api_key is None:
-        raise RuntimeError("GOOGLE_API_KEY is not set. Add it to .env.")
-
-    model = ChatGoogleGenerativeAI(
-        model=settings.gemini_model,
-        google_api_key=settings.google_api_key,
-    ).bind_tools(TOOLS)
-
-    async def agent(state: AgentState) -> dict[str, list[BaseMessage]]:
-        messages = [SystemMessage(content=SYSTEM_PROMPT), *state["messages"]]
-        response = await model.ainvoke(messages)
-        return {"messages": [response]}
-
+    """Form-input pipeline: locate, search, check transport, then one of two endings."""
     graph = StateGraph(AgentState)
-    graph.add_node("agent", agent)
-    graph.add_node("tools", ToolNode(TOOLS, handle_tool_errors=True))
-    graph.add_edge(START, "agent")
-    graph.add_conditional_edges("agent", tools_condition)
-    graph.add_edge("tools", "agent")
+    graph.add_node("locate", locate)
+    graph.add_node("find_vacancies", find_vacancies)
+    graph.add_node("check_transport", check_transport)
+    graph.add_node("explain", explain)
+    graph.add_node("plain_ending", plain_ending)
+    graph.add_edge(START, "locate")
+    graph.add_edge("locate", "find_vacancies")
+    graph.add_edge("find_vacancies", "check_transport")
+    graph.add_conditional_edges(
+        "check_transport", route_after_transport, ["explain", "plain_ending"]
+    )
+    graph.add_edge("explain", END)
+    graph.add_edge("plain_ending", END)
     return graph.compile()
