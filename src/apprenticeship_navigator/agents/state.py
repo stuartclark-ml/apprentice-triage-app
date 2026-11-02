@@ -22,3 +22,4 @@ class AgentState(TypedDict):
     arrive_by: datetime
     vacancy_journeys: list[VacancyJourney]
     transport_status: Literal["ok", "degraded"]
+    explanation: str | None

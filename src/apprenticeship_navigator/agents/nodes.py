@@ -3,7 +3,11 @@ from datetime import datetime
 import httpx
 from pydantic import ValidationError
 
-from apprenticeship_navigator.agents.routing import feasibility
+from apprenticeship_navigator.agents.routing import (
+    MARGINAL_MAX_MINUTES,
+    REACHABLE,
+    feasibility,
+)
 from apprenticeship_navigator.agents.state import AgentState
 from apprenticeship_navigator.models.postcode import PostcodeLookup
 from apprenticeship_navigator.models.transport import VacancyJourney
@@ -117,4 +121,27 @@ async def check_transport(state: AgentState) -> dict[str, list[VacancyJourney] |
     return {
         "vacancy_journeys": journeys,
         "transport_status": "degraded" if all_failed else "ok",
+    }
+
+
+def plain_ending(state: AgentState) -> dict[str, str]:
+    """Fixed wording for every run that has nothing reachable to explain."""
+    if state["location_error"]:
+        text = state["location_error"]
+    elif state["vacancy_error"]:
+        text = state["vacancy_error"]
+    elif state["transport_status"] == "degraded":
+        text = "Journey times could not be checked; check travel yourself or try again later."
+    elif not state["vacancies"]:
+        text = "No vacancies found within your chosen distance."
+    else:
+        text = f"None of the nearest vacancies can be reached within {MARGINAL_MAX_MINUTES} minutes."
+    return {"explanation": text}
+
+
+def explain(state: AgentState) -> dict[str, str]:
+    """Placeholder until Week 2, when Gemini writes this from vacancy and journey data."""
+    reachable = [j for j in state["vacancy_journeys"] if j.feasibility in REACHABLE]
+    return {
+        "explanation": f"{len(reachable)} reachable vacancies. (Explanation step not yet built.)"
     }
