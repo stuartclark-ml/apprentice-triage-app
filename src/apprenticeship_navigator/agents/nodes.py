@@ -1,13 +1,23 @@
-import httpx
+from datetime import datetime
 
+import httpx
+from pydantic import ValidationError
+
+from apprenticeship_navigator.agents.routing import feasibility
 from apprenticeship_navigator.agents.state import AgentState
 from apprenticeship_navigator.models.postcode import PostcodeLookup
+from apprenticeship_navigator.models.transport import VacancyJourney
+from apprenticeship_navigator.models.vacancy import Vacancy
 from apprenticeship_navigator.services.postcode_api import (
     PostcodeNotFoundError,
     PostcodeServiceError,
     get_postcode_lookup,
 )
-from apprenticeship_navigator.models.vacancy import Vacancy
+from apprenticeship_navigator.services.transport_api import (
+    TransportDisambiguationError,
+    TransportServiceError,
+    get_journeys,
+)
 from apprenticeship_navigator.services.vacancy_api import (
     VacancyServiceError,
     search_vacancies,
@@ -61,3 +71,29 @@ def vacancy_coordinates(vacancy: Vacancy) -> tuple[float, float] | None:
         if address.latitude is not None and address.longitude is not None:
             return (address.latitude, address.longitude)
     return None
+
+
+async def check_vacancy(
+    vacancy: Vacancy,
+    origin: tuple[float, float],
+    arrive_by: datetime,
+    client: httpx.AsyncClient,
+) -> VacancyJourney:
+    """Check one vacancy's journey; failures give feasibility None instead of raising."""
+    destination = vacancy_coordinates(vacancy)
+    if destination is None:
+        return VacancyJourney(vacancy=vacancy)
+    try:
+        response = await get_journeys(origin, destination, arrive_by, client)
+    except (
+        TransportServiceError,
+        TransportDisambiguationError,
+        httpx.HTTPError,
+        ValidationError,
+    ):
+        return VacancyJourney(vacancy=vacancy)
+    fastest = min(response.journeys, key=lambda journey: journey.duration, default=None)
+    minutes = fastest.duration if fastest is not None else None
+    return VacancyJourney(
+        vacancy=vacancy, journey=fastest, feasibility=feasibility(minutes)
+    )
