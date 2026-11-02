@@ -53,3 +53,11 @@ async def find_vacancies(state: AgentState) -> dict[str, list[Vacancy] | str | N
                 "vacancy_error": "Vacancy service unavailable. Try again later.",
             }
     return {"vacancies": result.vacancies, "vacancy_error": None}
+
+
+def vacancy_coordinates(vacancy: Vacancy) -> tuple[float, float] | None:
+    """Return the first address's (latitude, longitude), or None if none has both."""
+    for address in vacancy.addresses or []:
+        if address.latitude is not None and address.longitude is not None:
+            return (address.latitude, address.longitude)
+    return None

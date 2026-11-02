@@ -5,10 +5,18 @@ import pytest
 import respx
 from typing import Any
 
-from apprenticeship_navigator.agents.nodes import locate, find_vacancies
+from apprenticeship_navigator.agents.nodes import (
+    locate,
+    find_vacancies,
+    vacancy_coordinates,
+)
 from apprenticeship_navigator.agents.state import AgentState
 from apprenticeship_navigator.models.postcode import PostcodeLookup
-from apprenticeship_navigator.models.vacancy import VacancySearchResponse
+from apprenticeship_navigator.models.vacancy import (
+    Vacancy,
+    VacancyAddress,
+    VacancySearchResponse,
+)
 
 
 @pytest.mark.asyncio
@@ -96,3 +104,23 @@ async def test_find_vacancies_stores_real_reply(
     expected = VacancySearchResponse.model_validate(vacancy_search_payload).vacancies
     assert update["vacancies"] == expected
     assert update["vacancy_error"] is None
+
+
+@pytest.mark.parametrize(
+    ("addresses", "expected"),
+    [
+        (None, None),
+        ([VacancyAddress(latitude=51.5)], None),
+        (
+            [
+                VacancyAddress(latitude=51.5),
+                VacancyAddress(latitude=51.6, longitude=-0.1),
+            ],
+            (51.6, -0.1),
+        ),
+    ],
+)
+def test_vacancy_coordinates(
+    addresses: list[VacancyAddress] | None, expected: tuple[float, float] | None
+) -> None:
+    assert vacancy_coordinates(Vacancy(addresses=addresses)) == expected
