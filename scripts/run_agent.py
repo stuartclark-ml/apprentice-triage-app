@@ -1,18 +1,33 @@
 import asyncio
-
-from langchain_core.messages import HumanMessage
+import sys
+from datetime import date, datetime, time, timedelta
 
 from apprenticeship_navigator.agents.graph import build_graph
 
 
-async def main() -> None:
-    graph = build_graph()
-    question = HumanMessage(content="Find apprenticeships within 10 miles of SW1A 1AA.")
-    result = await graph.ainvoke({"messages": [question]})
+def next_weekday_at_nine() -> datetime:
+    """Return 09:00 on the next Monday-to-Friday day after today."""
+    day = date.today() + timedelta(days=1)
+    while day.weekday() >= 5:
+        day += timedelta(days=1)
+    return datetime.combine(day, time(9, 0))
 
-    print(f"Messages in final state: {len(result['messages'])}")
-    print(result["messages"][-1].text)
+
+async def main(postcode: str) -> None:
+    graph = build_graph()
+    result = await graph.ainvoke(
+        {
+            "messages": [],
+            "postcode": postcode,
+            "distance_in_miles": 10,
+            "arrive_by": next_weekday_at_nine(),
+        }
+    )
+    print(f"Transport status: {result['transport_status']}")
+    for record in result["vacancy_journeys"]:
+        print(f"  {record.feasibility}: {record.vacancy.title}")
+    print(result["explanation"])
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(sys.argv[1]))
