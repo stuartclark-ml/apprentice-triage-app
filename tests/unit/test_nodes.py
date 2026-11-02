@@ -9,6 +9,7 @@ from apprenticeship_navigator.agents.nodes import (
     locate,
     find_vacancies,
     vacancy_coordinates,
+    check_vacancy,
 )
 from apprenticeship_navigator.agents.state import AgentState
 from apprenticeship_navigator.models.postcode import PostcodeLookup
@@ -16,6 +17,15 @@ from apprenticeship_navigator.models.vacancy import (
     Vacancy,
     VacancyAddress,
     VacancySearchResponse,
+)
+
+from apprenticeship_navigator.models.transport import JourneyPlannerResponse
+
+ORIGIN = (51.501, -0.1415)
+ARRIVE_BY = datetime(2026, 10, 13, 9, 0)
+VACANCY = Vacancy(addresses=[VacancyAddress(latitude=51.40564, longitude=-0.11516)])
+TRANSPORT_URL = (
+    "https://api.tfl.gov.uk/Journey/JourneyResults/51.501,-0.1415/to/51.40564,-0.11516"
 )
 
 
@@ -124,3 +134,54 @@ def test_vacancy_coordinates(
     addresses: list[VacancyAddress] | None, expected: tuple[float, float] | None
 ) -> None:
     assert vacancy_coordinates(Vacancy(addresses=addresses)) == expected
+
+
+@pytest.mark.asyncio
+async def test_check_vacancy_keeps_fastest_journey(
+    journey_success_payload: dict[str, Any],
+) -> None:
+    with respx.mock:
+        respx.get(TRANSPORT_URL).mock(
+            return_value=httpx.Response(200, json=journey_success_payload)
+        )
+        async with httpx.AsyncClient() as client:
+            result = await check_vacancy(VACANCY, ORIGIN, ARRIVE_BY, client)
+
+    reply = JourneyPlannerResponse.model_validate(journey_success_payload)
+    assert result.journey is not None
+    assert result.journey.duration == min(j.duration for j in reply.journeys)
+    assert result.feasibility == "FEASIBLE"
+
+
+@pytest.mark.asyncio
+async def test_check_vacancy_no_journeys_is_infeasible() -> None:
+    with respx.mock:
+        respx.get(TRANSPORT_URL).mock(
+            return_value=httpx.Response(200, json={"journeys": []})
+        )
+        async with httpx.AsyncClient() as client:
+            result = await check_vacancy(VACANCY, ORIGIN, ARRIVE_BY, client)
+
+    assert result.journey is None
+    assert result.feasibility == "INFEASIBLE"
+
+
+@pytest.mark.asyncio
+async def test_check_vacancy_service_error_gives_no_label() -> None:
+    with respx.mock:
+        respx.get(TRANSPORT_URL).mock(return_value=httpx.Response(300))
+        async with httpx.AsyncClient() as client:
+            result = await check_vacancy(VACANCY, ORIGIN, ARRIVE_BY, client)
+
+    assert result.journey is None
+    assert result.feasibility is None
+
+
+@pytest.mark.asyncio
+async def test_check_vacancy_without_coordinates_skips_service() -> None:
+    with respx.mock:
+        async with httpx.AsyncClient() as client:
+            result = await check_vacancy(Vacancy(), ORIGIN, ARRIVE_BY, client)
+
+    assert result.journey is None
+    assert result.feasibility is None
