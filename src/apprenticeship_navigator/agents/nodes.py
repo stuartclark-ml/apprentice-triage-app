@@ -9,7 +9,7 @@ from apprenticeship_navigator.agents.routing import (
     feasibility,
 )
 from apprenticeship_navigator.agents.state import AgentState
-from apprenticeship_navigator.models.postcode import PostcodeLookup
+from apprenticeship_navigator.sanitise import SafeLocation, sanitise
 from apprenticeship_navigator.models.transport import VacancyJourney
 from apprenticeship_navigator.models.vacancy import Vacancy
 from apprenticeship_navigator.services.postcode_api import (
@@ -28,11 +28,11 @@ from apprenticeship_navigator.services.vacancy_api import (
 )
 
 
-async def locate(state: AgentState) -> dict[str, PostcodeLookup | str | None]:
+async def locate(postcode: str) -> dict[str, SafeLocation | str | None]:
     """Look up the applicant's postcode; record a reason instead of raising."""
     async with httpx.AsyncClient() as client:
         try:
-            location = await get_postcode_lookup(state["postcode"], client)
+            location = await get_postcode_lookup(postcode, client)
         except PostcodeNotFoundError:
             return {
                 "location": None,
@@ -43,7 +43,7 @@ async def locate(state: AgentState) -> dict[str, PostcodeLookup | str | None]:
                 "location": None,
                 "location_error": "Postcode service unavailable. Try again later.",
             }
-    return {"location": location, "location_error": None}
+    return {"location": sanitise(location), "location_error": None}
 
 
 async def find_vacancies(state: AgentState) -> dict[str, list[Vacancy] | str | None]:
