@@ -15,7 +15,6 @@ def next_weekday_at_nine() -> datetime:
     return datetime.combine(day, time(9, 0))
 
 
-# scripts/run_agent.py
 async def main(postcode: str) -> None:
     located = await locate(postcode)
     graph = build_graph()

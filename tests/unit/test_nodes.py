@@ -32,7 +32,6 @@ TRANSPORT_URL = (
 )
 
 
-# tests/unit/test_nodes.py
 @pytest.mark.asyncio
 async def test_locate_records_not_found_instead_of_raising():
     with respx.mock:
@@ -45,7 +44,6 @@ async def test_locate_records_not_found_instead_of_raising():
     assert update["location_error"] == "Postcode not found. Please check it."
 
 
-# tests/unit/test_nodes.py
 @pytest.mark.asyncio
 async def test_locate_stores_location_on_success():
     with respx.mock:
