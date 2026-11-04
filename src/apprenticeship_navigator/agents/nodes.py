@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai.chat_models import GoogleAPIError, GoogleRateLimitError
 
 from apprenticeship_navigator.agents.routing import (
     MARGINAL_MAX_MINUTES,
@@ -167,7 +168,12 @@ async def explain(state: AgentState) -> dict[str, str]:
         model=settings.gemini_model, google_api_key=settings.google_api_key
     )
     facts = json.dumps(explanation_facts(reachable))
-    response = await model.ainvoke(
-        [SystemMessage(content=EXPLANATION_PROMPT), HumanMessage(content=facts)]
-    )
+    try:
+        response = await model.ainvoke(
+            [SystemMessage(content=EXPLANATION_PROMPT), HumanMessage(content=facts)]
+        )
+    except (GoogleRateLimitError, GoogleAPIError):
+        return {
+            "explanation": "Explanation unavailable right now. The journey results above still stand."
+        }
     return {"explanation": response.text}
