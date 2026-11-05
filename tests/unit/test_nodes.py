@@ -13,6 +13,7 @@ from apprenticeship_navigator.agents.nodes import (
     vacancy_coordinates,
 )
 
+from apprenticeship_navigator.sanitise import SafeLocation
 from apprenticeship_navigator.agents.state import AgentState
 from apprenticeship_navigator.models.postcode import PostcodeLookup
 from apprenticeship_navigator.models.vacancy import (
@@ -33,21 +34,11 @@ TRANSPORT_URL = (
 
 @pytest.mark.asyncio
 async def test_locate_records_not_found_instead_of_raising():
-    state: AgentState = {
-        "messages": [],
-        "postcode": "ZZ999ZZ",
-        "location": None,
-        "location_error": None,
-        "distance_in_miles": 10,
-        "vacancies": [],
-        "vacancy_error": None,
-        "arrive_by": datetime(2026, 10, 27, 9, 0),
-    }
     with respx.mock:
         respx.get("https://api.postcodes.io/postcodes/ZZ999ZZ").mock(
             return_value=httpx.Response(404)
         )
-        update = await locate(state)
+        update = await locate("ZZ999ZZ")
 
     assert update["location"] is None
     assert update["location_error"] == "Postcode not found. Please check it."
@@ -55,16 +46,6 @@ async def test_locate_records_not_found_instead_of_raising():
 
 @pytest.mark.asyncio
 async def test_locate_stores_location_on_success():
-    state: AgentState = {
-        "messages": [],
-        "postcode": "SW1A1AA",
-        "location": None,
-        "location_error": "left over from an earlier run",
-        "distance_in_miles": 10,
-        "vacancies": [],
-        "vacancy_error": None,
-        "arrive_by": datetime(2026, 10, 27, 9, 0),
-    }
     with respx.mock:
         respx.get("https://api.postcodes.io/postcodes/SW1A1AA").mock(
             return_value=httpx.Response(
@@ -79,9 +60,11 @@ async def test_locate_stores_location_on_success():
                 },
             )
         )
-        update = await locate(state)
+        update = await locate("SW1A1AA")
 
-    assert update["location"] is not None
+    assert update["location"] == SafeLocation(
+        area="Westminster 018C", latitude=51.5, longitude=-0.14
+    )
     assert update["location_error"] is None
 
 

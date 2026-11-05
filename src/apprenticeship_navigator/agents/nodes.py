@@ -1,7 +1,12 @@
 from datetime import datetime
 
 import httpx
+import json
 from pydantic import ValidationError
+
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai.chat_models import GoogleAPIError, GoogleRateLimitError
 
 from apprenticeship_navigator.agents.routing import (
     MARGINAL_MAX_MINUTES,
@@ -9,7 +14,7 @@ from apprenticeship_navigator.agents.routing import (
     feasibility,
 )
 from apprenticeship_navigator.agents.state import AgentState
-from apprenticeship_navigator.models.postcode import PostcodeLookup
+from apprenticeship_navigator.sanitise import SafeLocation, explanation_facts, sanitise
 from apprenticeship_navigator.models.transport import VacancyJourney
 from apprenticeship_navigator.models.vacancy import Vacancy
 from apprenticeship_navigator.services.postcode_api import (
@@ -27,12 +32,14 @@ from apprenticeship_navigator.services.vacancy_api import (
     search_vacancies,
 )
 
+from apprenticeship_navigator.config import settings
 
-async def locate(state: AgentState) -> dict[str, PostcodeLookup | str | None]:
+
+async def locate(postcode: str) -> dict[str, SafeLocation | str | None]:
     """Look up the applicant's postcode; record a reason instead of raising."""
     async with httpx.AsyncClient() as client:
         try:
-            location = await get_postcode_lookup(state["postcode"], client)
+            location = await get_postcode_lookup(postcode, client)
         except PostcodeNotFoundError:
             return {
                 "location": None,
@@ -43,7 +50,7 @@ async def locate(state: AgentState) -> dict[str, PostcodeLookup | str | None]:
                 "location": None,
                 "location_error": "Postcode service unavailable. Try again later.",
             }
-    return {"location": location, "location_error": None}
+    return {"location": sanitise(location), "location_error": None}
 
 
 async def find_vacancies(state: AgentState) -> dict[str, list[Vacancy] | str | None]:
@@ -139,9 +146,34 @@ def plain_ending(state: AgentState) -> dict[str, str]:
     return {"explanation": text}
 
 
-def explain(state: AgentState) -> dict[str, str]:
-    """Placeholder until Week 2, when Gemini writes this from vacancy and journey data."""
+EXPLANATION_PROMPT = (
+    "You explain apprenticeship options to a young person in England. "
+    "Use only the facts provided; never invent vacancies, pay, dates or advice. "
+    "If a fact is missing, leave it out rather than guess. "
+    "FEASIBLE means a comfortable journey; MARGINAL means reachable but long "
+    f"(up to {MARGINAL_MAX_MINUTES} minutes). "
+    "For each vacancy, give the title, employer, journey time and closing date. "
+    "Plain English, plain text, no headings, under 120 words."
+)
+
+
+async def explain(state: AgentState) -> dict[str, str]:
+    """Gemini explains reachable vacancies from allow-listed facts only."""
     reachable = [j for j in state["vacancy_journeys"] if j.feasibility in REACHABLE]
-    return {
-        "explanation": f"{len(reachable)} reachable vacancies. (Explanation step not yet built.)"
-    }
+    if settings.google_api_key is None:
+        return {
+            "explanation": f"{len(reachable)} reachable vacancies. (No Gemini key set.)"
+        }
+    model = ChatGoogleGenerativeAI(
+        model=settings.gemini_model, google_api_key=settings.google_api_key
+    )
+    facts = json.dumps(explanation_facts(reachable))
+    try:
+        response = await model.ainvoke(
+            [SystemMessage(content=EXPLANATION_PROMPT), HumanMessage(content=facts)]
+        )
+    except (GoogleRateLimitError, GoogleAPIError):
+        return {
+            "explanation": "Explanation unavailable right now. The journey results above still stand."
+        }
+    return {"explanation": response.text}

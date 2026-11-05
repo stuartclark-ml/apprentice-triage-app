@@ -4,6 +4,8 @@ from datetime import date, datetime, time, timedelta
 
 from apprenticeship_navigator.agents.graph import build_graph
 
+from apprenticeship_navigator.agents.nodes import locate
+
 
 def next_weekday_at_nine() -> datetime:
     """Return 09:00 on the next Monday-to-Friday day after today."""
@@ -14,11 +16,13 @@ def next_weekday_at_nine() -> datetime:
 
 
 async def main(postcode: str) -> None:
+    located = await locate(postcode)
     graph = build_graph()
     result = await graph.ainvoke(
         {
             "messages": [],
-            "postcode": postcode,
+            "location": located["location"],
+            "location_error": located["location_error"],
             "distance_in_miles": 10,
             "arrive_by": next_weekday_at_nine(),
         }
@@ -30,4 +34,8 @@ async def main(postcode: str) -> None:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit(
+            "Error: no postcode given. Usage: uv run python scripts/run_agent.py POSTCODE (for example SW1A1AA)"
+        )
     asyncio.run(main(sys.argv[1]))
