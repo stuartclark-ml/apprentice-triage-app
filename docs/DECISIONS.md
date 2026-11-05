@@ -30,3 +30,42 @@ postcode returned "degraded" for every vacancy.
 README. The route still ends safely with a plain explanation, not a crash.
 
 **Next.** A national journey planner, after 20 November.
+
+## 3. Data minimisation (decision, 3–5 November 2026)
+
+**Context.** The applicant gives a postcode. Vacancy listings carry employer
+contact names, email addresses, phone numbers and site addresses. LangSmith
+records the graph's starting input, and Gemini receives whatever the
+explanation step sends it.
+
+**Decision.**
+- Sanitise before the graph starts. The postcode is looked up once, before
+  the graph is invoked; only the area name and coordinates rounded to two
+  decimal places enter state. `SafeLocation` has no postcode field, so state
+  cannot hold one: privacy comes from the type, not from deleting later.
+- Round coordinates to two decimal places: a point moves at most about 550
+  metres. Measured cost: journey times of 7, 21 and 23 minutes against 8, 20
+  and 24 with exact coordinates.
+- Send Gemini an allow-list of six fields only: title, employer, level,
+  closing date, journey minutes and feasibility. Never contacts, addresses or
+  descriptions; a real listing named a contact person and email address.
+- Catch failures by name. A rate limit or server error gives fixed fallback
+  wording; configuration errors still crash. Error wording is fixed text and
+  never repeats what the user typed.
+
+**Alternatives rejected.** Cleaning inside the first node: the trace has
+already recorded the input. Sending the whole vacancy to Gemini: it would
+include personal contact details.
+
+**Evidence.** Tests: the postcode is dropped and coordinates rounded;
+Gemini receives exactly the allow-listed facts, with no email, postcode or
+coordinates; the fallback works on a rate limit. A manual check of a traced
+run found no postcode, coordinates, email or address. An unused tool that
+accepted a raw postcode was removed on 5 November.
+
+**Limits.** The trace check is manual. The area name is used, not the area
+code. Production would add LangSmith input masking and a scheduled scan for
+postcode patterns.
+
+**Next.** Week 3's database stores state, so the same boundary protects it;
+the Week 3 test is a database query showing no postcodes.
