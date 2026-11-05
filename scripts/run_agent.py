@@ -34,4 +34,8 @@ async def main(postcode: str) -> None:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit(
+            "Error: no postcode given. Usage: uv run python scripts/run_agent.py POSTCODE (for example SW1A1AA)"
+        )
     asyncio.run(main(sys.argv[1]))
