@@ -191,6 +191,8 @@ async def review(state: AgentState) -> dict[str, str]:
     )
     if decision == "approve":
         return {}
-    return {
-        "explanation": "Explanation withheld after review. The journey results above still stand."
-    }
+    if decision == "reject":
+        return {
+            "explanation": "Explanation withheld after review. The journey results above still stand."
+        }
+    raise ValueError(f"Review decision must be 'approve' or 'reject', got {decision!r}")
