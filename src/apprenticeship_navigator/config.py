@@ -19,5 +19,7 @@ class Settings(BaseSettings):
     langsmith_api_key: SecretStr | None = None
     langsmith_project: str = "apprenticeship-navigator-dev"
 
+    database_url: SecretStr | None = None
+
 
 settings = Settings()
