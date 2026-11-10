@@ -8,6 +8,8 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.types import Command
 
+from langchain_core.runnables import RunnableConfig
+
 from apprenticeship_navigator.config import settings
 from apprenticeship_navigator.agents.graph import build_graph
 from apprenticeship_navigator.agents.nodes import locate
@@ -54,7 +56,7 @@ async def start(postcode: str) -> None:
         sys.exit("Error: DATABASE_URL is not set in .env")
     located = await locate(postcode)
     run_id = str(uuid.uuid4())
-    config = {"configurable": {"thread_id": run_id}}
+    config: RunnableConfig = {"configurable": {"thread_id": run_id}}
     async with AsyncPostgresSaver.from_conn_string(
         settings.database_url.get_secret_value(), serde=SERDE
     ) as checkpointer:
@@ -76,7 +78,7 @@ async def start(postcode: str) -> None:
 async def resume(run_id: str, decision: str) -> None:
     if settings.database_url is None:
         sys.exit("Error: DATABASE_URL is not set in .env")
-    config = {"configurable": {"thread_id": run_id}}
+    config: RunnableConfig = {"configurable": {"thread_id": run_id}}
     async with AsyncPostgresSaver.from_conn_string(
         settings.database_url.get_secret_value(), serde=SERDE
     ) as checkpointer:

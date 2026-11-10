@@ -1,10 +1,12 @@
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
+from langchain_core.runnables import RunnableConfig
+
 
 from apprenticeship_navigator.agents import graph as graph_module
 
-CONFIG = {"configurable": {"thread_id": "test-run"}}
+CONFIG: RunnableConfig = {"configurable": {"thread_id": "test-run"}}
 
 
 async def fake_find_vacancies(state):
