@@ -125,3 +125,24 @@ in state. Then: rejection reasons from a fixed list; an automated pre-check
 for unsupported wording) that flags issues to the adviser, scored against
 the recorded rejection reasons; skip review for fixed wording; and
 checkpoint clean-up.
+
+## 5. Area deprivation not used in routing (decision, 10 November 2026)
+
+**Context.** The original design listed the Office for National Statistics
+deprivation score as local context, since the service aims to help people
+in economically deprived areas.
+
+**Decision.** Deprivation plays no part in routing or the explanation.
+Routing answers one question: can the applicant reach this vacancy in time?
+An area's deprivation score does not change that answer, so it adds no
+value to the decision.
+
+**Alternatives rejected.** As an eligibility gate or priority: it judges a
+person by their area's average (the ecological fallacy), so a low-income
+applicant in a low-deprivation area would be ranked lower or excluded. As
+context in the explanation: no decision depends on it, and it would add a
+label about the applicant's area to state and to Gemini's input.
+
+**Evidence.** State holds no deprivation field, and Gemini's six-field
+allow-list (section 3) has none. The area code that deprivation data is
+keyed by is not stored (section 3), so it cannot be looked up later.
