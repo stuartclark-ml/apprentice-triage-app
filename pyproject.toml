@@ -8,7 +8,9 @@ dependencies = [
     "fastapi[standard]>=0.115",
     "langchain-google-genai>=4.4.0",
     "langgraph>=1.2.12",
+    "langgraph-checkpoint-postgres>=3.2.0",
     "langsmith>=0.14.1",
+    "psycopg[binary]>=3.3.8",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
 ]

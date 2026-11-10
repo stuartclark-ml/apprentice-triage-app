@@ -67,5 +67,61 @@ accepted a raw postcode was removed on 5 November.
 code. Production would add LangSmith input masking and a scheduled scan for
 postcode patterns.
 
-**Next.** Week 3's database stores state, so the same boundary protects it;
-the Week 3 test is a database query showing no postcodes.
+**Evidence (10 November).** A database query across all three checkpoint
+tables (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes`) found no
+applicant postcode in any saved run; the pattern ignored case and spaces. A
+control search for an employer name found it in all three tables, so the
+search reads the stored data. Rounded coordinates are stored; at two
+decimal places each covers many postcodes, and coverage is London-only
+(section 2).
+
+## 4. Human review and saved runs (decision, 9–10 November 2026)
+
+**Context.** Gemini's explanation goes to a young applicant (section 1). A
+model can state something the source facts do not support, so a person
+should check the text before release. That check may take hours, so a
+paused run must survive the program stopping.
+
+**Decision.**
+- Review comes after Gemini writes. A careers adviser reads the explanation
+  beside the six source facts (section 3) and answers `approve` or `reject`.
+  Approve releases the text; reject gives fixed wording; any other answer is
+  a bug and raises an error, so nothing is released by accident.
+- The pause is its own small node. On resume, LangGraph re-runs the paused
+  node from its first line; if the pause sat inside the Gemini step, Gemini
+  would write again and the adviser would approve text they never saw.
+- Runs are saved after every node to PostgreSQL (Neon in development; a
+  local container for the demonstration). Code reads only `DATABASE_URL`.
+- Two commands, `start` and `resume`, so every resume runs in a new process:
+  each review is also a restart test.
+- Saved state is rebuilt only from five named classes. Anything else comes
+  back as a plain dictionary and fails loudly, instead of the library's
+  default of rebuilding any class with a warning.
+
+**Alternatives rejected.** Review before Gemini writes: the adviser would not
+see the text the applicant receives. Free-text answers from the adviser: they
+cannot be tested, and would put unchecked text into the run. Keeping state in
+memory: a restart would lose every waiting review.
+
+**Evidence.** Four tests cover pause, approve, reject and an unknown answer;
+40 tests pass in continuous integration. A run paused on 9 November was
+resumed on 10 November from a new process and released the saved text
+unchanged. A second run after the allow-list was added resumed with no
+deserialisation warnings. Database check: section 3.
+
+**Limits.**
+- Checkpoints store full vacancy records, including employer contact names,
+  email addresses and site postcodes. Gemini never sees them (section 3),
+  but the database holds them.
+- Review is requested even when the explanation is already fixed wording.
+- The resume path is tested only for runs where transport checks succeed; a
+  degraded run may store a class not yet on the allow-list.
+- Saved checkpoints are never deleted. The adviser copies the run identifier
+  from the terminal; there is no list of waiting reviews.
+
+**Next.** First after 20 November: store only the six allow-listed fields
+in state. Then: rejection reasons from a fixed list; an automated pre-check
+(code for numbers and dates, a small judge model from a different provider
+for unsupported wording) that flags issues to the adviser, scored against
+the recorded rejection reasons; skip review for fixed wording; and
+checkpoint clean-up.

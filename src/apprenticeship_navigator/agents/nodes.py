@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_genai.chat_models import GoogleAPIError, GoogleRateLimitError
+from langgraph.types import interrupt
 
 from apprenticeship_navigator.agents.routing import (
     MARGINAL_MAX_MINUTES,
@@ -177,3 +178,21 @@ async def explain(state: AgentState) -> dict[str, str]:
             "explanation": "Explanation unavailable right now. The journey results above still stand."
         }
     return {"explanation": response.text}
+
+
+async def review(state: AgentState) -> dict[str, str]:
+    """Pause so a careers adviser can approve Gemini's text against its source facts."""
+    reachable = [j for j in state["vacancy_journeys"] if j.feasibility in REACHABLE]
+    decision = interrupt(
+        {
+            "explanation": state["explanation"],
+            "facts": explanation_facts(reachable),
+        }
+    )
+    if decision == "approve":
+        return {}
+    if decision == "reject":
+        return {
+            "explanation": "Explanation withheld after review. The journey results above still stand."
+        }
+    raise ValueError(f"Review decision must be 'approve' or 'reject', got {decision!r}")
