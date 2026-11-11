@@ -114,8 +114,9 @@ deserialisation warnings. Database check: section 3.
   email addresses and site postcodes. Gemini never sees them (section 3),
   but the database holds them.
 - Review is requested even when the explanation is already fixed wording.
-- The resume path is tested only for runs where transport checks succeed; a
-  degraded run may store a class not yet on the allow-list.
+- The resume path is tested on an all-feasible run. A fully degraded run
+  ends without pausing, so it never resumes; a partly degraded run stores
+  the same classes.
 - Saved checkpoints are never deleted. The adviser copies the run identifier
   from the terminal; there is no list of waiting reviews.
 
