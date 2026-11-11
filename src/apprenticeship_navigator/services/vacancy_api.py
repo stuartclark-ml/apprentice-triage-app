@@ -3,7 +3,7 @@ from typing import Any
 import httpx
 
 from apprenticeship_navigator.config import settings
-from apprenticeship_navigator.models.vacancy import VacancySearchResponse
+from apprenticeship_navigator.models.vacancy import VacancySearchResponse, Vacancy
 
 VACANCY_API_BASE_URL = "https://api.apprenticeships.education.gov.uk/vacancies"
 MAX_ATTEMPTS = 3
@@ -55,3 +55,9 @@ async def search_vacancies(
 ) -> VacancySearchResponse:
     data = await _get_json(client, "/vacancy", query_params)
     return VacancySearchResponse(**data)
+
+
+async def get_vacancy(client: httpx.AsyncClient, reference: str) -> Vacancy:
+    """Return one full advert, including qualifications, skills and things to consider."""
+    data = await _get_json(client, f"/vacancy/{reference}")
+    return Vacancy.model_validate(data)
