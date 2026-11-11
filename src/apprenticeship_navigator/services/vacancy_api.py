@@ -1,5 +1,5 @@
 import asyncio
-
+from typing import Any
 import httpx
 
 from apprenticeship_navigator.config import settings
@@ -13,10 +13,13 @@ class VacancyServiceError(Exception):
     pass
 
 
-async def search_vacancies(
-    client: httpx.AsyncClient, **query_params: str | int | float
-) -> VacancySearchResponse:
-    url = f"{VACANCY_API_BASE_URL}/vacancy"
+async def _get_json(
+    client: httpx.AsyncClient,
+    path: str,
+    params: dict[str, str | int | float] | None = None,
+) -> dict[str, Any]:
+    """GET a vacancy API path, retrying timeouts and server errors; return the JSON."""
+    url = f"{VACANCY_API_BASE_URL}{path}"
     headers = {
         "Ocp-Apim-Subscription-Key": settings.apprenticeship_api_key,
         "X-Version": "2",
@@ -25,7 +28,7 @@ async def search_vacancies(
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             response = await client.get(
-                url, headers=headers, params=query_params, timeout=10.0
+                url, headers=headers, params=params, timeout=10.0
             )
         except httpx.TimeoutException:
             if attempt == MAX_ATTEMPTS:
@@ -42,6 +45,13 @@ async def search_vacancies(
             continue
 
         response.raise_for_status()
-        return VacancySearchResponse(**response.json())
+        return response.json()
 
     raise VacancyServiceError("Unreachable")
+
+
+async def search_vacancies(
+    client: httpx.AsyncClient, **query_params: str | int | float
+) -> VacancySearchResponse:
+    data = await _get_json(client, "/vacancy", query_params)
+    return VacancySearchResponse(**data)
