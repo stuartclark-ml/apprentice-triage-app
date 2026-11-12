@@ -8,6 +8,7 @@ from apprenticeship_navigator.agents.nodes import (
     check_transport,
     explain,
     find_vacancies,
+    fetch_requirements,
     plain_ending,
     review,
 )
@@ -18,7 +19,7 @@ from apprenticeship_navigator.agents.state import AgentState
 def build_graph(
     checkpointer: BaseCheckpointSaver | None = None,
 ) -> CompiledStateGraph[Any]:
-    """Form-input pipeline: search, check transport, then one of two endings.
+    """Form-input pipeline: search, check transport, fetch requirements, then one of two endings.
 
     The explanation ending pauses for a careers adviser's review.
     With a checkpointer, state is saved after every step, so a run can pause and resume.
@@ -26,13 +27,15 @@ def build_graph(
     graph = StateGraph(AgentState)
     graph.add_node("find_vacancies", find_vacancies)
     graph.add_node("check_transport", check_transport)
+    graph.add_node("fetch_requirements", fetch_requirements)
     graph.add_node("explain", explain)
     graph.add_node("plain_ending", plain_ending)
     graph.add_node("review", review)
     graph.add_edge(START, "find_vacancies")
     graph.add_edge("find_vacancies", "check_transport")
+    graph.add_edge("check_transport", "fetch_requirements")
     graph.add_conditional_edges(
-        "check_transport", route_after_transport, ["explain", "plain_ending"]
+        "fetch_requirements", route_after_transport, ["explain", "plain_ending"]
     )
     graph.add_edge("explain", "review")
     graph.add_edge("review", END)
