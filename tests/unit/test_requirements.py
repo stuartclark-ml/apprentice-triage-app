@@ -14,3 +14,7 @@ def test_html_to_text_turns_lists_into_lines():
 def test_html_to_text_empty_values_become_none():
     assert html_to_text(None) is None
     assert html_to_text("<p>&nbsp;</p>") is None
+
+
+def test_html_to_text_removes_invisible_spaces():
+    assert html_to_text("<p>\u200b\u200bInfrastructure</p>") == "Infrastructure"

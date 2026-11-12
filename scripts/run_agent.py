@@ -13,6 +13,8 @@ from langchain_core.runnables import RunnableConfig
 from apprenticeship_navigator.config import settings
 from apprenticeship_navigator.agents.graph import build_graph
 from apprenticeship_navigator.agents.nodes import locate
+from apprenticeship_navigator.models.requirements import VacancyRequirements
+from apprenticeship_navigator.models.vacancy import QualificationWeighting
 
 # Classes the checkpointer may rebuild from the database. Any other
 # custom class comes back as a plain dictionary (strict mode).
@@ -23,6 +25,8 @@ SERDE = JsonPlusSerializer(
         ("apprenticeship_navigator.models.vacancy", "WageUnit"),
         ("apprenticeship_navigator.models.vacancy", "Vacancy"),
         ("apprenticeship_navigator.models.transport", "VacancyJourney"),
+        ("apprenticeship_navigator.models.requirements", "VacancyRequirements"),
+        ("apprenticeship_navigator.models.vacancy", "QualificationWeighting"),
     ]
 )
 
@@ -35,11 +39,39 @@ def next_weekday_at_nine() -> datetime:
     return datetime.combine(day, time(9, 0))
 
 
+MAX_CONSIDER_LINES = 8
+
+
+def show_requirements(requirements: VacancyRequirements | None) -> None:
+    """Print one advert's requirements, or say they could not be fetched."""
+    if requirements is None:
+        print("    Requirements: details unavailable")
+        return
+    for q in requirements.qualifications:
+        label = (
+            "Must have"
+            if q.weighting == QualificationWeighting.essential
+            else "Nice to have"
+        )
+        print(f"    {label}: {q.qualification_type} {q.subject} ({q.grade})")
+    if requirements.skills:
+        print(f"    Skills: {', '.join(requirements.skills)}")
+    if requirements.things_to_consider:
+        lines = requirements.things_to_consider.splitlines()
+        print("    Things to consider:")
+        for line in lines[:MAX_CONSIDER_LINES]:
+            print(f"      {line}")
+        if len(lines) > MAX_CONSIDER_LINES:
+            print("      ... (see the full advert)")
+
+
 def show(result: dict, run_id: str) -> None:
     """Print the journeys, then either the pause for review or the final text."""
     print(f"Transport status: {result['transport_status']}")
+    found = result.get("requirements", {})
     for record in result["vacancy_journeys"]:
         print(f"  {record.feasibility}: {record.vacancy.title}")
+        show_requirements(found.get(record.vacancy.vacancy_reference or ""))
     if "__interrupt__" in result:
         pause = result["__interrupt__"][0].value
         print(
