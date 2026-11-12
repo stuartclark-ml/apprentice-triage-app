@@ -18,6 +18,10 @@ from apprenticeship_navigator.agents.state import AgentState
 from apprenticeship_navigator.sanitise import SafeLocation, explanation_facts, sanitise
 from apprenticeship_navigator.models.transport import VacancyJourney
 from apprenticeship_navigator.models.vacancy import Vacancy
+from apprenticeship_navigator.models.requirements import (
+    VacancyRequirements,
+    html_to_text,
+)
 from apprenticeship_navigator.services.postcode_api import (
     PostcodeNotFoundError,
     PostcodeServiceError,
@@ -31,6 +35,7 @@ from apprenticeship_navigator.services.transport_api import (
 from apprenticeship_navigator.services.vacancy_api import (
     VacancyServiceError,
     search_vacancies,
+    get_vacancy,
 )
 
 from apprenticeship_navigator.config import settings
@@ -108,6 +113,22 @@ async def check_vacancy(
     minutes = fastest.duration if fastest is not None else None
     return VacancyJourney(
         vacancy=vacancy, journey=fastest, feasibility=feasibility(minutes)
+    )
+
+
+async def requirements_for(
+    reference: str, client: httpx.AsyncClient
+) -> VacancyRequirements | None:
+    """Fetch one advert's requirements; failures give None instead of raising."""
+    try:
+        vacancy = await get_vacancy(client, reference)
+    except (VacancyServiceError, httpx.HTTPError, ValidationError):
+        return None
+    return VacancyRequirements(
+        reference=reference,
+        qualifications=vacancy.qualifications or [],
+        skills=vacancy.skills or [],
+        things_to_consider=html_to_text(vacancy.things_to_consider),
     )
 
 

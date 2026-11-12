@@ -7,6 +7,7 @@ from langgraph.graph.message import add_messages
 from apprenticeship_navigator.sanitise import SafeLocation
 from apprenticeship_navigator.models.transport import VacancyJourney
 from apprenticeship_navigator.models.vacancy import Vacancy
+from apprenticeship_navigator.models.requirements import VacancyRequirements
 
 
 class AgentState(TypedDict):
@@ -22,3 +23,4 @@ class AgentState(TypedDict):
     vacancy_journeys: list[VacancyJourney]
     transport_status: Literal["ok", "degraded"]
     explanation: str | None
+    requirements: dict[str, VacancyRequirements]
