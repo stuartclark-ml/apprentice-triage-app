@@ -15,6 +15,7 @@ from apprenticeship_navigator.agents.graph import build_graph
 from apprenticeship_navigator.agents.nodes import locate
 from apprenticeship_navigator.models.requirements import VacancyRequirements
 from apprenticeship_navigator.models.vacancy import QualificationWeighting
+from apprenticeship_navigator.models.transport import Journey
 
 # Classes the checkpointer may rebuild from the database. Any other
 # custom class comes back as a plain dictionary (strict mode).
@@ -37,6 +38,16 @@ def next_weekday_at_nine() -> datetime:
     while day.weekday() >= 5:
         day += timedelta(days=1)
     return datetime.combine(day, time(9, 0))
+
+
+def show_route(journey: Journey | None) -> None:
+    """Print the fastest journey's leaving time, legs and fare, if there is one."""
+    if journey is None:
+        return
+    legs = ", then ".join(f"{leg.mode.name} {leg.duration} min" for leg in journey.legs)
+    print(f"    Route: leave {journey.start_date_time:%H:%M}, {legs}")
+    if journey.fare is not None and journey.fare.total_cost is not None:
+        print(f"    Fare: £{journey.fare.total_cost / 100:.2f}")
 
 
 MAX_CONSIDER_LINES = 8
@@ -71,6 +82,7 @@ def show(result: dict, run_id: str) -> None:
     found = result.get("requirements", {})
     for record in result["vacancy_journeys"]:
         print(f"  {record.feasibility}: {record.vacancy.title}")
+        show_route(record.journey)
         show_requirements(found.get(record.vacancy.vacancy_reference or ""))
     if "__interrupt__" in result:
         pause = result["__interrupt__"][0].value
