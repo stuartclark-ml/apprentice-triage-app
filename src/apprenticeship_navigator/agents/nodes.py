@@ -217,3 +217,19 @@ async def review(state: AgentState) -> dict[str, str]:
             "explanation": "Explanation withheld after review. The journey results above still stand."
         }
     raise ValueError(f"Review decision must be 'approve' or 'reject', got {decision!r}")
+
+
+async def fetch_requirements(
+    state: AgentState,
+) -> dict[str, dict[str, VacancyRequirements]]:
+    """Fetch requirements for the checked vacancies; a failed fetch is left out."""
+    found: dict[str, VacancyRequirements] = {}
+    async with httpx.AsyncClient() as client:
+        for record in state["vacancy_journeys"]:
+            reference = record.vacancy.vacancy_reference
+            if reference is None:
+                continue
+            requirements = await requirements_for(reference, client)
+            if requirements is not None:
+                found[reference] = requirements
+    return {"requirements": found}
