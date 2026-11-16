@@ -3,9 +3,7 @@ import sys
 import json
 import uuid
 
-from datetime import date, datetime, time, timedelta
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.types import Command
 
 from langchain_core.runnables import RunnableConfig
@@ -16,28 +14,7 @@ from apprenticeship_navigator.agents.nodes import locate
 from apprenticeship_navigator.models.requirements import VacancyRequirements
 from apprenticeship_navigator.models.vacancy import QualificationWeighting
 from apprenticeship_navigator.models.transport import Journey
-
-# Classes the checkpointer may rebuild from the database. Any other
-# custom class comes back as a plain dictionary (strict mode).
-SERDE = JsonPlusSerializer(
-    allowed_msgpack_modules=[
-        ("apprenticeship_navigator.sanitise", "SafeLocation"),
-        ("apprenticeship_navigator.models.vacancy", "WageType"),
-        ("apprenticeship_navigator.models.vacancy", "WageUnit"),
-        ("apprenticeship_navigator.models.vacancy", "Vacancy"),
-        ("apprenticeship_navigator.models.transport", "VacancyJourney"),
-        ("apprenticeship_navigator.models.requirements", "VacancyRequirements"),
-        ("apprenticeship_navigator.models.vacancy", "QualificationWeighting"),
-    ]
-)
-
-
-def next_weekday_at_nine() -> datetime:
-    """Return 09:00 on the next Monday-to-Friday day after today."""
-    day = date.today() + timedelta(days=1)
-    while day.weekday() >= 5:
-        day += timedelta(days=1)
-    return datetime.combine(day, time(9, 0))
+from apprenticeship_navigator.runs import SERDE, next_weekday_at_nine
 
 
 def show_route(journey: Journey | None) -> None:
