@@ -1,20 +1,11 @@
 import asyncio
 import sys
 import json
-import uuid
 
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.types import Command
-
-from langchain_core.runnables import RunnableConfig
-
-from apprenticeship_navigator.config import settings
-from apprenticeship_navigator.agents.graph import build_graph
-from apprenticeship_navigator.agents.nodes import locate
 from apprenticeship_navigator.models.requirements import VacancyRequirements
 from apprenticeship_navigator.models.vacancy import QualificationWeighting
 from apprenticeship_navigator.models.transport import Journey
-from apprenticeship_navigator.runs import SERDE, next_weekday_at_nine
+from apprenticeship_navigator.runs import resume_run, start_run
 
 
 def show_route(journey: Journey | None) -> None:
@@ -73,38 +64,12 @@ def show(result: dict, run_id: str) -> None:
 
 
 async def start(postcode: str) -> None:
-    if settings.database_url is None:
-        sys.exit("Error: DATABASE_URL is not set in .env")
-    located = await locate(postcode)
-    run_id = str(uuid.uuid4())
-    config: RunnableConfig = {"configurable": {"thread_id": run_id}}
-    async with AsyncPostgresSaver.from_conn_string(
-        settings.database_url.get_secret_value(), serde=SERDE
-    ) as checkpointer:
-        await checkpointer.setup()
-        graph = build_graph(checkpointer=checkpointer)
-        result = await graph.ainvoke(
-            {
-                "messages": [],
-                "location": located["location"],
-                "location_error": located["location_error"],
-                "distance_in_miles": 10,
-                "arrive_by": next_weekday_at_nine(),
-            },
-            config,
-        )
+    run_id, result = await start_run(postcode, distance_in_miles=10)
     show(result, run_id)
 
 
 async def resume(run_id: str, decision: str) -> None:
-    if settings.database_url is None:
-        sys.exit("Error: DATABASE_URL is not set in .env")
-    config: RunnableConfig = {"configurable": {"thread_id": run_id}}
-    async with AsyncPostgresSaver.from_conn_string(
-        settings.database_url.get_secret_value(), serde=SERDE
-    ) as checkpointer:
-        graph = build_graph(checkpointer=checkpointer)
-        result = await graph.ainvoke(Command(resume=decision), config)
+    result = await resume_run(run_id, decision)
     show(result, run_id)
 
 
