@@ -1,12 +1,20 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Literal
+from pathlib import Path
 
 from apprenticeship_navigator.models.applicant_view import RunView
 from apprenticeship_navigator.runs import NotAwaitingReview, resume_run, start_run
 from apprenticeship_navigator.web.views import run_view
 
 app = FastAPI(title="Apprenticeship Navigator (demonstration)")
+PAGE = Path(__file__).parent / "static" / "index.html"
+
+
+@app.get("/")
+async def page() -> FileResponse:
+    return FileResponse(PAGE)
 
 
 class StartRequest(BaseModel):

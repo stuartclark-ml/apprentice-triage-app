@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apprenticeship Navigator (demonstration)</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; color: #1f2933; line-height: 1.45; }
+  .banner { background: #fff4d6; border: 1px solid #e6c766; padding: .6rem .9rem; border-radius: 6px; margin-bottom: 1.5rem; }
+  form { display: flex; gap: .8rem; align-items: end; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  label { display: flex; flex-direction: column; font-size: .9rem; gap: .2rem; }
+  input { padding: .45rem; font-size: 1rem; border: 1px solid #9aa5b1; border-radius: 4px; }
+  button { padding: .5rem 1rem; font-size: 1rem; border: 0; border-radius: 4px; cursor: pointer; background: #2563eb; color: #fff; }
+  button.reject { background: #b91c1c; }
+  button:disabled { opacity: .5; cursor: default; }
+  .status { min-height: 1.4rem; margin-bottom: 1rem; color: #52606d; }
+  .status.error { color: #b91c1c; }
+  .limits { font-size: .9rem; color: #52606d; margin-bottom: 1rem; }
+  .layout { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 1.4fr); gap: 1.5rem; align-items: start; }
+  .panel { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+  .panel h2 { margin: 0 0 .4rem; font-size: 1rem; }
+  .instructions { border: 1px solid #cbd2d9; background: #f8fafc; border-radius: 6px; padding: .8rem 1rem; margin-bottom: 1rem; font-size: .92rem; }
+  .instructions p { margin: 0; }
+  .explanation { border-left: 4px solid #2563eb; background: #f0f5ff; padding: .8rem 1rem; white-space: pre-line; margin-bottom: 1rem; }
+  .card h4 { margin: .9rem 0 .2rem; font-size: .95rem; color: #2563eb; border-bottom: 1px solid #e4e7eb; padding-bottom: .15rem; }
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+    .panel { position: static; max-height: none; }
+  }
+  .card { border: 1px solid #cbd2d9; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+  .card h3 { margin: 0 0 .2rem; }
+  .muted { color: #52606d; font-size: .9rem; }
+  .card dl { display: grid; grid-template-columns: max-content 1fr; gap: .2rem .8rem; margin: .3rem 0; }
+  .card dt { font-weight: 600; }
+  .card dd { margin: 0; }
+  .card ul { margin: .2rem 0 .6rem 1.2rem; padding: 0; }
+  details pre { white-space: pre-wrap; font-family: inherit; margin: .4rem 0 0; }
+  .review { display: flex; gap: .8rem; align-items: center; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<h1>Apprenticeship Navigator</h1>
+<p class="banner">Demonstration interface. Not a live service: runs on this computer only.</p>
+
+<form id="start-form">
+  <label>Postcode
+    <input id="postcode" name="postcode" required maxlength="10" autocomplete="off">
+  </label>
+  <label>Distance (miles)
+    <input id="distance" name="distance" type="number" min="1" value="10" required>
+  </label>
+  <button type="submit" id="start-button">Find vacancies</button>
+</form>
+
+<p id="status" class="status" role="status"></p>
+
+<section id="result" class="layout" hidden>
+  <aside class="panel">
+    <div class="instructions">
+      <h2>What the careers adviser checks</h2>
+      <p>Check every claim in the explanation against the cards. Names, employers,
+      journey times and closing dates must match exactly. Reject if the explanation
+      claims anything the cards do not support, for example that the applicant can
+      apply when a card lists qualification or residency requirements, or that a
+      journey will be comfortable.</p>
+    </div>
+    <p id="limits" class="limits"></p>
+    <div class="explanation">
+      <h2 id="explanation-heading"></h2>
+      <div id="explanation"></div>
+    </div>
+    <div id="review" class="review" hidden>
+      <button type="button" id="approve-button">Approve</button>
+      <button type="button" id="reject-button" class="reject">Reject</button>
+    </div>
+  </aside>
+  <div id="cards"></div>
+</section>
+
+<script>
+// Every piece of text from the server is inserted with textContent, never
+// innerHTML, so advert or model text can never become markup or script.
+
+const ADVERT_SITE = "https://www.findapprenticeship.service.gov.uk/";
+let currentRunId = null;
+
+function el(tag, text, className) {
+  const node = document.createElement(tag);
+  if (text !== undefined && text !== null) node.textContent = text;
+  if (className) node.className = className;
+  return node;
+}
+
+function setStatus(message, isError) {
+  const status = document.getElementById("status");
+  status.textContent = message;
+  status.classList.toggle("error", Boolean(isError));
+}
+
+function addRow(list, label, value) {
+  if (value === null || value === undefined || value === "") return;
+  list.append(el("dt", label), el("dd", String(value)));
+}
+
+function addList(card, heading, items) {
+  if (!items || items.length === 0) return;
+  card.append(el("strong", heading));
+  const ul = el("ul");
+  for (const item of items) ul.append(el("li", item));
+  card.append(ul);
+}
+
+function renderCard(data) {
+  const card = el("article", null, "card");
+  card.append(el("h3", data.title || "Untitled vacancy"));
+  card.append(el("p", [data.employer, data.level].filter(Boolean).join(" · "), "muted"));
+
+  card.append(el("h4", "Journey"));
+  const journey = el("dl");
+  addRow(journey, "Feasibility", data.feasibility);
+  addRow(journey, "Minutes", data.journey_minutes);
+  if (data.route) {
+    addRow(journey, "Leave at", data.route.leave_at);
+    addRow(journey, "Route", data.route.legs.join(", then "));
+    addRow(journey, "Fare", data.route.fare);
+  }
+  card.append(journey);
+
+  card.append(el("h4", "Dates, pay and hours"));
+  const job = el("dl");
+  addRow(job, "Closes", data.closing_date);
+  addRow(job, "Starts", data.start_date);
+  addRow(job, "Wage", data.wage);
+  addRow(job, "Hours", data.hours);
+  card.append(job);
+
+  card.append(el("h4", "Requirements"));
+
+  if (data.requirements_available) {
+    addList(card, "Must have", data.must_have);
+    addList(card, "Nice to have", data.nice_to_have);
+    addList(card, "Skills", data.skills);
+    if (data.things_to_consider) {
+      const details = el("details");
+      details.append(el("summary", "Things to consider (from the advert)"));
+      details.append(el("pre", data.things_to_consider));
+      card.append(details);
+    }
+  } else {
+    card.append(el("p", "Details unavailable: the full advert could not be fetched.", "muted"));
+  }
+
+  // Only link to the official advert site, so data can never supply a
+  // "javascript:" or look-alike address.
+  if (data.advert_url && data.advert_url.startsWith(ADVERT_SITE)) {
+    const link = el("a", "Open the full advert");
+    link.href = data.advert_url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    card.append(link);
+  }
+  return card;
+}
+
+function render(view) {
+  currentRunId = view.run_id;
+  document.getElementById("limits").textContent = "Time limits: " + view.time_limits;
+  document.getElementById("explanation-heading").textContent = view.awaiting_review
+    ? "Explanation (draft, awaiting careers adviser review)"
+    : "Explanation";
+  document.getElementById("explanation").textContent = view.explanation;
+
+  const cards = document.getElementById("cards");
+  cards.replaceChildren(...view.cards.map(renderCard));
+  if (view.cards.length === 0) cards.append(el("p", "No vacancies to show.", "muted"));
+
+  document.getElementById("review").hidden = !view.awaiting_review;
+  document.getElementById("result").hidden = false;
+}
+
+async function send(path, body) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = typeof data.detail === "string" ? data.detail : "Request refused.";
+    throw new Error(`${response.status}: ${detail}`);
+  }
+  return data;
+}
+
+function setBusy(busy) {
+  for (const id of ["start-button", "approve-button", "reject-button"]) {
+    document.getElementById(id).disabled = busy;
+  }
+}
+
+document.getElementById("start-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(true);
+  setStatus("Working: searching vacancies, planning journeys, drafting the explanation...");
+  try {
+    const view = await send("/runs", {
+      postcode: document.getElementById("postcode").value.trim(),
+      distance_in_miles: Number(document.getElementById("distance").value),
+    });
+    render(view);
+    setStatus(view.awaiting_review ? "Awaiting careers adviser review." : "Finished.");
+  } catch (error) {
+    setStatus(error.message, true);
+  } finally {
+    setBusy(false);
+  }
+});
+
+async function decide(decision) {
+  if (!currentRunId) return;
+  setBusy(true);
+  setStatus("Recording decision...");
+  try {
+    const view = await send(`/runs/${encodeURIComponent(currentRunId)}/decision`, { decision });
+    render(view);
+    setStatus(decision === "approve" ? "Approved: explanation released." : "Rejected: explanation withheld.");
+  } catch (error) {
+    setStatus(error.message, true);
+  } finally {
+    setBusy(false);
+  }
+}
+
+document.getElementById("approve-button").addEventListener("click", () => decide("approve"));
+document.getElementById("reject-button").addEventListener("click", () => decide("reject"));
+</script>
+</body>
+</html>
