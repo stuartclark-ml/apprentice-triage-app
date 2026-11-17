@@ -1,10 +1,23 @@
-from apprenticeship_navigator.models.applicant_view import RouteView
-from apprenticeship_navigator.models.vacancy import VacancyWage, WageType, WageUnit
+from datetime import datetime
+
+from apprenticeship_navigator.models.applicant_view import RouteView, VacancyCard
+from apprenticeship_navigator.models.vacancy import (
+    Vacancy,
+    VacancyWage,
+    WageType,
+    WageUnit,
+    QualificationWeighting,
+)
 from apprenticeship_navigator.agents.routing import (
     FEASIBLE_MAX_MINUTES,
     MARGINAL_MAX_MINUTES,
 )
-from apprenticeship_navigator.models.transport import Feasibility, Journey
+from apprenticeship_navigator.models.transport import (
+    Feasibility,
+    Journey,
+    VacancyJourney,
+)
+from apprenticeship_navigator.models.requirements import VacancyRequirements
 
 
 WAGE_TYPE_WORDS = {
@@ -63,3 +76,52 @@ def feasibility_text(feasibility: Feasibility | None) -> str:
     if feasibility is None:
         return "Journey not checked: transport service unavailable"
     return FEASIBILITY_WORDS[feasibility]
+
+
+def date_text(moment: datetime | None) -> str | None:
+    """A date as '11 January 2027'."""
+    if moment is None:
+        return None
+    return f"{moment.day} {moment:%B %Y}"
+
+
+def hours_text(vacancy: Vacancy) -> str | None:
+    """Hours per week and working pattern, as the advert gives them."""
+    parts = []
+    if vacancy.hours_per_week is not None:
+        parts.append(f"{vacancy.hours_per_week:g} hours a week")
+    if vacancy.wage is not None and vacancy.wage.working_week_description:
+        parts.append(vacancy.wage.working_week_description.strip())
+    return ". ".join(parts) or None
+
+
+def vacancy_card(
+    record: VacancyJourney, requirements: VacancyRequirements | None
+) -> VacancyCard:
+    """One vacancy as the applicant sees it. Contact details are never copied."""
+    vacancy = record.vacancy
+    card = VacancyCard(
+        reference=vacancy.vacancy_reference or "",
+        title=vacancy.title,
+        employer=vacancy.employer_name,
+        level=vacancy.apprenticeship_level,
+        closing_date=date_text(vacancy.closing_date),
+        start_date=date_text(vacancy.start_date),
+        wage=wage_text(vacancy.wage),
+        hours=hours_text(vacancy),
+        advert_url=vacancy.vacancy_url,
+        feasibility=feasibility_text(record.feasibility),
+        journey_minutes=record.journey.duration if record.journey else None,
+        route=route_view(record.journey),
+        requirements_available=requirements is not None,
+    )
+    if requirements is not None:
+        for q in requirements.qualifications:
+            text = f"{q.qualification_type} {q.subject} ({q.grade})"
+            if q.weighting == QualificationWeighting.essential:
+                card.must_have.append(text)
+            else:
+                card.nice_to_have.append(text)
+        card.skills = list(requirements.skills)
+        card.things_to_consider = requirements.things_to_consider
+    return card
