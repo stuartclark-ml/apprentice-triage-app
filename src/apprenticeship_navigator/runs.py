@@ -34,6 +34,10 @@ def next_weekday_at_nine() -> datetime:
     return datetime.combine(day, time(9, 0))
 
 
+class NotAwaitingReview(Exception):
+    """The run is finished or does not exist, so there is nothing to decide."""
+
+
 async def start_run(
     postcode: str, distance_in_miles: int
 ) -> tuple[str, dict[str, Any]]:
@@ -70,5 +74,8 @@ async def resume_run(run_id: str, decision: str) -> dict[str, Any]:
         settings.database_url.get_secret_value(), serde=SERDE
     ) as checkpointer:
         graph = build_graph(checkpointer=checkpointer)
+        snapshot = await graph.aget_state(config)
+        if not snapshot.next:
+            raise NotAwaitingReview(run_id)
         result = await graph.ainvoke(Command(resume=decision), config)
     return result
