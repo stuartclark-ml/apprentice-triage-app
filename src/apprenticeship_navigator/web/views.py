@@ -1,6 +1,11 @@
 from apprenticeship_navigator.models.applicant_view import RouteView
-from apprenticeship_navigator.models.transport import Journey
 from apprenticeship_navigator.models.vacancy import VacancyWage, WageType, WageUnit
+from apprenticeship_navigator.agents.routing import (
+    FEASIBLE_MAX_MINUTES,
+    MARGINAL_MAX_MINUTES,
+)
+from apprenticeship_navigator.models.transport import Feasibility, Journey
+
 
 WAGE_TYPE_WORDS = {
     WageType.apprenticeship_minimum: "Apprenticeship minimum wage",
@@ -42,3 +47,19 @@ def route_view(journey: Journey | None) -> RouteView | None:
         legs=[f"{leg.mode.name} {leg.duration} min" for leg in journey.legs],
         fare=fare,
     )
+
+
+FEASIBILITY_WORDS = {
+    "FEASIBLE": f"Feasible: up to {FEASIBLE_MAX_MINUTES} minutes",
+    "MARGINAL": (
+        f"Long journey: {FEASIBLE_MAX_MINUTES + 1} to {MARGINAL_MAX_MINUTES} minutes"
+    ),
+    "INFEASIBLE": f"Not feasible: over {MARGINAL_MAX_MINUTES} minutes or no route",
+}
+
+
+def feasibility_text(feasibility: Feasibility | None) -> str:
+    """Feasibility in plain words, with the time limit stated."""
+    if feasibility is None:
+        return "Journey not checked: transport service unavailable"
+    return FEASIBILITY_WORDS[feasibility]

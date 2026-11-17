@@ -7,7 +7,7 @@ from apprenticeship_navigator.models.transport import (
     TransportMode,
 )
 from apprenticeship_navigator.models.vacancy import VacancyWage, WageType, WageUnit
-from apprenticeship_navigator.web.views import wage_text, route_view
+from apprenticeship_navigator.web.views import feasibility_text, route_view, wage_text
 
 
 def test_custom_wage_without_amount_shows_advert_text() -> None:
@@ -76,3 +76,17 @@ def test_walking_only_route_has_no_fare() -> None:
 
 def test_no_journey_gives_no_route() -> None:
     assert route_view(None) is None
+
+
+def test_feasible_states_the_limit() -> None:
+    assert feasibility_text("FEASIBLE") == "Feasible: up to 60 minutes"
+
+
+def test_marginal_range_starts_above_feasible_limit() -> None:
+    assert feasibility_text("MARGINAL") == "Long journey: 61 to 90 minutes"
+
+
+def test_unchecked_journey_is_explained() -> None:
+    assert (
+        feasibility_text(None) == "Journey not checked: transport service unavailable"
+    )
