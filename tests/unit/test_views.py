@@ -1,4 +1,5 @@
 from datetime import datetime
+from types import SimpleNamespace
 
 from apprenticeship_navigator.models.transport import (
     Journey,
@@ -23,6 +24,7 @@ from apprenticeship_navigator.web.views import (
     route_view,
     wage_text,
     vacancy_card,
+    run_view,
 )
 
 
@@ -160,3 +162,39 @@ def test_missing_requirements_and_unchecked_journey() -> None:
     assert card.requirements_available is False
     assert card.must_have == []
     assert card.feasibility == "Journey not checked: transport service unavailable"
+
+
+def test_paused_run_reads_explanation_from_the_pause() -> None:
+    record = VacancyJourney(vacancy=make_vacancy(), feasibility="FEASIBLE")
+    result = {
+        "transport_status": "ok",
+        "vacancy_journeys": [record],
+        "requirements": {
+            "2000062551": VacancyRequirements(
+                reference="2000062551", skills=["Patience"]
+            )
+        },
+        "__interrupt__": [SimpleNamespace(value={"explanation": "Draft text"})],
+    }
+    view = run_view(result, "run-1")
+    assert view.awaiting_review is True
+    assert view.explanation == "Draft text"
+    assert view.cards[0].skills == ["Patience"]
+    assert "60 minutes" in view.time_limits
+
+
+def test_finished_run_reads_released_text() -> None:
+    result = {
+        "transport_status": "ok",
+        "vacancy_journeys": [],
+        "explanation": "Withheld",
+    }
+    view = run_view(result, "run-1")
+    assert view.awaiting_review is False
+    assert view.explanation == "Withheld"
+
+
+def test_run_that_ended_early_gives_no_cards() -> None:
+    view = run_view({"explanation": "Postcode not found"}, "run-1")
+    assert view.cards == []
+    assert view.explanation == "Postcode not found"

@@ -1,6 +1,11 @@
 from datetime import datetime
+from typing import Any
 
-from apprenticeship_navigator.models.applicant_view import RouteView, VacancyCard
+from apprenticeship_navigator.models.applicant_view import (
+    RouteView,
+    VacancyCard,
+    RunView,
+)
 from apprenticeship_navigator.models.vacancy import (
     Vacancy,
     VacancyWage,
@@ -125,3 +130,25 @@ def vacancy_card(
         card.skills = list(requirements.skills)
         card.things_to_consider = requirements.things_to_consider
     return card
+
+
+def run_view(result: dict[str, Any], run_id: str) -> RunView:
+    """The whole run as the page shows it: explanation, then a card per vacancy."""
+    found = result.get("requirements", {})
+    cards = [
+        vacancy_card(record, found.get(record.vacancy.vacancy_reference or ""))
+        for record in result.get("vacancy_journeys", [])
+    ]
+    awaiting = "__interrupt__" in result
+    if awaiting:
+        explanation = result["__interrupt__"][0].value["explanation"]
+    else:
+        explanation = result.get("explanation") or ""
+    return RunView(
+        run_id=run_id,
+        awaiting_review=awaiting,
+        transport_status=result.get("transport_status"),
+        explanation=explanation,
+        time_limits=". ".join(FEASIBILITY_WORDS.values()),
+        cards=cards,
+    )

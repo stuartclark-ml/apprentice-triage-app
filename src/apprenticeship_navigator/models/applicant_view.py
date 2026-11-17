@@ -25,3 +25,12 @@ class VacancyCard(BaseModel):
     skills: list[str] = []
     things_to_consider: str | None = None
     requirements_available: bool
+
+
+class RunView(BaseModel):
+    run_id: str
+    awaiting_review: bool
+    transport_status: str | None = None
+    explanation: str
+    time_limits: str
+    cards: list[VacancyCard] = []
