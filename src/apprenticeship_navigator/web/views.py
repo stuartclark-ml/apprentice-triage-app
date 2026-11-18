@@ -44,12 +44,15 @@ def wage_text(wage: VacancyWage | None) -> str | None:
     if wage.wage_type == WageType.custom and wage.wage_amount is not None:
         unit = UNIT_WORDS.get(wage.wage_unit, "") if wage.wage_unit else ""
         return f"£{wage.wage_amount:,.2f}{unit}"
-    parts = []
     words = WAGE_TYPE_WORDS.get(wage.wage_type) if wage.wage_type else None
-    if words:
-        parts.append(words)
-    if wage.wage_additional_information:
-        parts.append(wage.wage_additional_information.strip())
+    extra = (wage.wage_additional_information or "").strip()
+    if words and extra.rstrip(".").lower() in words.lower():
+        return words  # employer text only repeats the type
+    if words and words.lower() in extra.lower():
+        return extra  # employer text already says the type, and may add a figure
+    parts = [words] if words else []
+    if extra:
+        parts.append(extra)
     return ". ".join(parts) or None
 
 

@@ -198,3 +198,19 @@ def test_run_that_ended_early_gives_no_cards() -> None:
     view = run_view({"explanation": "Postcode not found"}, "run-1")
     assert view.cards == []
     assert view.explanation == "Postcode not found"
+
+
+def test_employer_text_repeating_the_type_is_dropped() -> None:
+    wage = VacancyWage(
+        wage_type=WageType.competitive_salary,
+        wage_additional_information="Competitive",
+    )
+    assert wage_text(wage) == "Competitive salary"
+
+
+def test_employer_text_with_a_figure_is_kept_once() -> None:
+    wage = VacancyWage(
+        wage_type=WageType.apprenticeship_minimum,
+        wage_additional_information="Apprenticeship minimum wage. £12,480 a year",
+    )
+    assert wage_text(wage) == "Apprenticeship minimum wage. £12,480 a year"
