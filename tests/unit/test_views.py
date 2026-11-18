@@ -25,7 +25,10 @@ from apprenticeship_navigator.web.views import (
     wage_text,
     vacancy_card,
     run_view,
+    letter_draft,
 )
+
+from apprenticeship_navigator.models.applicant_view import VacancyCard
 
 
 def test_custom_wage_without_amount_shows_advert_text() -> None:
@@ -214,3 +217,39 @@ def test_employer_text_with_a_figure_is_kept_once() -> None:
         wage_additional_information="Apprenticeship minimum wage. £12,480 a year",
     )
     assert wage_text(wage) == "Apprenticeship minimum wage. £12,480 a year"
+
+
+def make_card() -> VacancyCard:
+    return VacancyCard(
+        reference="2000062551",
+        title="IT Support Technician Apprentice",
+        employer="HATCHING  DRAGONS LIMITED ",
+        closing_date="11 December 2026",
+        start_date="11 January 2027",
+        must_have=["GCSE English (4/C)"],
+        feasibility="Feasible: up to 60 minutes",
+        requirements_available=True,
+    )
+
+
+def test_letter_is_built_only_from_card_facts() -> None:
+    letter = letter_draft(make_card())
+    assert letter is not None
+    assert (
+        '"IT Support Technician Apprentice" with HATCHING DRAGONS LIMITED,'
+        in letter.opening
+    )
+    assert "11 December 2026" in letter.closing
+    assert letter.greeting == "Dear Hiring Manager,"
+
+
+def test_claims_about_the_applicant_start_unticked() -> None:
+    letter = letter_draft(make_card())
+    assert letter is not None
+    claims = [section.text for section in letter.sections if section.is_claim]
+    assert claims == ["I have GCSE English (4/C)."]
+
+
+def test_no_letter_without_employer() -> None:
+    card = make_card().model_copy(update={"employer": None})
+    assert letter_draft(card) is None

@@ -3,8 +3,10 @@ from typing import Any
 
 from apprenticeship_navigator.models.applicant_view import (
     RouteView,
-    VacancyCard,
     RunView,
+    LetterDraft,
+    LetterSection,
+    VacancyCard,
 )
 from apprenticeship_navigator.models.vacancy import (
     Vacancy,
@@ -154,4 +156,41 @@ def run_view(result: dict[str, Any], run_id: str) -> RunView:
         explanation=explanation,
         time_limits=". ".join(FEASIBILITY_WORDS.values()),
         cards=cards,
+    )
+
+
+def letter_draft(card: VacancyCard) -> LetterDraft | None:
+    """Enquiry letter built only from card facts: no model, nothing invented."""
+    if not card.title or not card.employer:
+        return None
+    employer = " ".join(card.employer.split())
+    sections: list[LetterSection] = []
+    if card.start_date:
+        sections.append(
+            LetterSection(
+                text=f"I understand the apprenticeship is due to start on {card.start_date}.",
+                is_claim=False,
+            )
+        )
+    if card.must_have:
+        asked_for = "; ".join(card.must_have)
+        sections.append(
+            LetterSection(
+                text=f"I note the advert asks for {asked_for}.", is_claim=False
+            )
+        )
+    for item in card.must_have:
+        sections.append(LetterSection(text=f"I have {item}.", is_claim=True))
+    closing = "Please could you tell me more about the role and how to apply"
+    if card.closing_date:
+        closing += f" before the closing date of {card.closing_date}"
+    return LetterDraft(
+        greeting="Dear Hiring Manager,",
+        opening=(
+            f'I am writing about your vacancy "{card.title}" with {employer}, '
+            "which I found on Find an apprenticeship."
+        ),
+        sections=sections,
+        closing=closing + "?",
+        sign_off="Yours faithfully,\n[Your name]",
     )

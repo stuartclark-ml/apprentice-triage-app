@@ -7,6 +7,21 @@ class RouteView(BaseModel):
     fare: str | None = None
 
 
+class LetterSection(BaseModel):
+    text: str
+    is_claim: (
+        bool  # claims about the applicant start unticked; job facts start included
+    )
+
+
+class LetterDraft(BaseModel):
+    greeting: str
+    opening: str
+    sections: list[LetterSection]
+    closing: str
+    sign_off: str
+
+
 class VacancyCard(BaseModel):
     reference: str
     title: str | None = None
