@@ -36,6 +36,8 @@
   .card ul { margin: .2rem 0 .6rem 1.2rem; padding: 0; }
   details pre { white-space: pre-wrap; font-family: inherit; margin: .4rem 0 0; }
   .review { display: flex; gap: .8rem; align-items: center; }
+  .letter p { margin: .5rem 0; }
+  .letter-section { flex-direction: row; align-items: baseline; gap: .4rem; margin: .3rem 0; font-size: 1rem; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -111,6 +113,44 @@ function addList(card, heading, items) {
   card.append(ul);
 }
 
+// The letter is assembled here in the browser. Which sections are ticked never
+// reaches the server, so the applicant's choices are not stored or traced.
+function renderLetter(letter) {
+  const details = el("details", null, "letter");
+  details.append(el("summary", "Enquiry letter (built from the advert by code, no model)"));
+  details.append(el("p", letter.greeting));
+  details.append(el("p", letter.opening));
+  const boxes = [];
+  for (const section of letter.sections) {
+    const label = el("label", null, "letter-section");
+    const box = el("input");
+    box.type = "checkbox";
+    box.checked = !section.is_claim;
+    label.append(box, el("span", section.text));
+    if (section.is_claim) label.append(el("span", "(tick only if true)", "muted"));
+    details.append(label);
+    boxes.push([box, section.text]);
+  }
+  details.append(el("p", letter.closing));
+  details.append(el("pre", letter.sign_off));
+  const copy = el("button", "Copy letter");
+  copy.type = "button";
+  copy.addEventListener("click", async () => {
+    const chosen = boxes.filter(([box]) => box.checked).map(([, text]) => text);
+    const text = [letter.greeting, letter.opening, chosen.join(" "), letter.closing, letter.sign_off]
+      .filter(Boolean)
+      .join("\n\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      copy.textContent = "Copied";
+    } catch {
+      copy.textContent = "Copy failed: select the text instead";
+    }
+  });
+  details.append(copy);
+  return details;
+}
+
 function renderCard(data) {
   const card = el("article", null, "card");
   card.append(el("h3", data.title || "Untitled vacancy"));
@@ -157,9 +197,10 @@ function renderCard(data) {
     const link = el("a", "Open the full advert");
     link.href = data.advert_url;
     link.target = "_blank";
-    link.rel = "noopener noreferrer";
+        link.rel = "noopener noreferrer";
     card.append(link);
   }
+  if (data.letter) card.append(renderLetter(data.letter));
   return card;
 }
 

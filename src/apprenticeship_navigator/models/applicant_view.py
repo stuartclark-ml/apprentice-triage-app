@@ -40,6 +40,7 @@ class VacancyCard(BaseModel):
     skills: list[str] = []
     things_to_consider: str | None = None
     requirements_available: bool
+    letter: LetterDraft | None = None
 
 
 class RunView(BaseModel):

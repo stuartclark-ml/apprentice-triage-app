@@ -134,6 +134,7 @@ def vacancy_card(
                 card.nice_to_have.append(text)
         card.skills = list(requirements.skills)
         card.things_to_consider = requirements.things_to_consider
+    card.letter = letter_draft(card)
     return card
 
 
