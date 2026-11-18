@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     langsmith_project: str = "apprenticeship-navigator-dev"
 
     database_url: SecretStr | None = None
+    # Read by docker compose for the local database; declared so Settings accepts it.
+    postgres_password: SecretStr | None = None
 
 
 settings = Settings()
