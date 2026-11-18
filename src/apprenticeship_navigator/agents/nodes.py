@@ -198,7 +198,7 @@ async def explain(state: AgentState) -> dict[str, str]:
         )
     except (GoogleRateLimitError, GoogleAPIError):
         return {
-            "explanation": "Explanation unavailable right now. The journey results above still stand."
+            "explanation": "Explanation unavailable right now. The journey results still stand."
         }
     return {"explanation": response.text}
 
@@ -216,7 +216,7 @@ async def review(state: AgentState) -> dict[str, str]:
         return {}
     if decision == "reject":
         return {
-            "explanation": "Explanation withheld after review. The journey results above still stand."
+            "explanation": "Explanation withheld after review. The journey results still stand."
         }
     raise ValueError(f"Review decision must be 'approve' or 'reject', got {decision!r}")
 

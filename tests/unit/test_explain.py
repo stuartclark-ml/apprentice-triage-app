@@ -41,7 +41,7 @@ async def test_explain_falls_back_when_gemini_is_rate_limited(monkeypatch):
     result = await nodes.explain({"vacancy_journeys": []})
 
     assert result == {
-        "explanation": "Explanation unavailable right now. The journey results above still stand."
+        "explanation": "Explanation unavailable right now. The journey results still stand."
     }
 
 
