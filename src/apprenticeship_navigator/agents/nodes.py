@@ -169,10 +169,12 @@ def plain_ending(state: AgentState) -> dict[str, str]:
 
 
 EXPLANATION_PROMPT = (
-    "You explain apprenticeship options to a young person in England. "
+    "You explain apprenticeship vacancies in England to a young person. "
     "Use only the facts provided; never invent vacancies, pay, dates or advice. "
     "If a fact is missing, leave it out rather than guess. "
-    "FEASIBLE means a comfortable journey; MARGINAL means reachable but long "
+    "You know nothing about the person, so never say they can apply, are eligible or would suit a role. "
+    "A warm, encouraging tone is welcome, but describe each journey only by its time in minutes and whether it is FEASIBLE or MARGINAL, and make no claim the facts do not state. "
+    "Feasible means say a possible journey; Marginal means say reachable but long "
     f"(up to {MARGINAL_MAX_MINUTES} minutes). "
     "For each vacancy, give the title, employer, journey time and closing date. "
     "Plain English, plain text, no headings, under 120 words."
