@@ -126,3 +126,69 @@ in state. Then: rejection reasons from a fixed list; an automated pre-check
 for unsupported wording) that flags issues to the adviser, scored against
 the recorded rejection reasons; skip review for fixed wording; and
 checkpoint clean-up.
+
+## 6. Release scope (decision, 11–16 November 2026)
+
+**Context.** The release date, 20 November, is fixed. A reviewer must be
+able to run the navigator and judge it quickly. Search results carry no
+qualifications or skills, so an adviser could not see what each vacancy
+requires without opening every advert.
+
+**Decision.**
+- Docker runs the database only (`compose.yaml`); the app runs with `uv`.
+  Code reads only `DATABASE_URL` (section 4), so switching between Neon and
+  the local container needs no code change.
+- Requirements panel: for the three checked vacancies, the full advert is
+  fetched and shown by code, with no model: "Must have" (essential) and
+  "Nice to have" (desired) qualifications, skills, and the advert's
+  free-text "things to consider" with HTML removed, collapsed by default.
+  State keeps a slim record per vacancy with no contact details. A failed
+  fetch marks only that vacancy as "details unavailable".
+- Route detail: leaving time, legs and fare, shown as Transport for London
+  returns them.
+- One web page served by FastAPI: a form (postcode, distance), the
+  explanation first, then a card per vacancy with its route and
+  requirements, then approve and reject buttons that resume the run. All
+  advert and model text is inserted as text, never as HTML. The page is
+  generated rather than hand-written. Hard stop 18 November; if missed,
+  the command line ships.
+- Feasibility time limits are fixed and stated on the page. Production
+  would let them be set per user.
+- Keys are never committed. `.env.example` lists every setting the app
+  needs, and the README says where to get each key.
+
+**Alternatives rejected.** A Dockerfile for the app: `uv` already
+reproduces the environment exactly, and `rag-triage-api` already shows a
+containerised app. Gemini summarising requirements: it would add model text
+the adviser has not checked, while the advert's own fields can be shown as
+they are. Streamlit: it sends every click to the server, and the planned
+letter builder needs deletions to stay in the browser. A public live
+address: members of the public would enter real postcodes, strangers would
+spend the Gemini quota, and users would approve their own explanations.
+
+**Evidence.** A real fetch of one vacancy returned qualifications with
+essential and desired weightings, skills, and free text. A test feeds an
+advert containing a contact email and shows it is not stored. A test with a
+withdrawn advert first shows the loop carries on to the next vacancy. Real
+`start` and `resume` runs rebuilt the requirements from the database after
+a restart. 48 tests pass in continuous integration (16 November).
+
+**Limits.**
+- Employer data is shown as entered: one skills field reads "Click apply
+  for details", and some subjects are combined ("GCSE English and Maths").
+- The free text can contradict the structured qualifications (one advert
+  asks for five GCSEs including Science; its structured field lists English
+  and Maths only). It also holds hard barriers, such as three years'
+  United Kingdom residency and the right to work, that appear in no
+  structured field. The release shows this text but does not flag it.
+- Bus numbers and Tube line names are not shown.
+- Coverage is London and nearby only (section 2).
+- A reviewer running a fresh clone needs their own keys; the video covers
+  those who will not sign up.
+
+**Next.** Version 2: Gemini extracts barriers from the free text as
+structured flags, each quoting its source sentence, checked by the adviser
+(needs a section 3 update, because free text would then reach Gemini); one
+sentence per vacancy above its requirements, reviewed per vacancy; the
+enquiry letter builder. Possibly a temporary, invite-only live version with
+a fixed take-down date.

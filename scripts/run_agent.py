@@ -1,43 +1,11 @@
 import asyncio
 import sys
 import json
-import uuid
 
-from datetime import date, datetime, time, timedelta
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
-from langgraph.types import Command
-
-from langchain_core.runnables import RunnableConfig
-
-from apprenticeship_navigator.config import settings
-from apprenticeship_navigator.agents.graph import build_graph
-from apprenticeship_navigator.agents.nodes import locate
 from apprenticeship_navigator.models.requirements import VacancyRequirements
 from apprenticeship_navigator.models.vacancy import QualificationWeighting
 from apprenticeship_navigator.models.transport import Journey
-
-# Classes the checkpointer may rebuild from the database. Any other
-# custom class comes back as a plain dictionary (strict mode).
-SERDE = JsonPlusSerializer(
-    allowed_msgpack_modules=[
-        ("apprenticeship_navigator.sanitise", "SafeLocation"),
-        ("apprenticeship_navigator.models.vacancy", "WageType"),
-        ("apprenticeship_navigator.models.vacancy", "WageUnit"),
-        ("apprenticeship_navigator.models.vacancy", "Vacancy"),
-        ("apprenticeship_navigator.models.transport", "VacancyJourney"),
-        ("apprenticeship_navigator.models.requirements", "VacancyRequirements"),
-        ("apprenticeship_navigator.models.vacancy", "QualificationWeighting"),
-    ]
-)
-
-
-def next_weekday_at_nine() -> datetime:
-    """Return 09:00 on the next Monday-to-Friday day after today."""
-    day = date.today() + timedelta(days=1)
-    while day.weekday() >= 5:
-        day += timedelta(days=1)
-    return datetime.combine(day, time(9, 0))
+from apprenticeship_navigator.runs import resume_run, start_run
 
 
 def show_route(journey: Journey | None) -> None:
@@ -96,38 +64,12 @@ def show(result: dict, run_id: str) -> None:
 
 
 async def start(postcode: str) -> None:
-    if settings.database_url is None:
-        sys.exit("Error: DATABASE_URL is not set in .env")
-    located = await locate(postcode)
-    run_id = str(uuid.uuid4())
-    config: RunnableConfig = {"configurable": {"thread_id": run_id}}
-    async with AsyncPostgresSaver.from_conn_string(
-        settings.database_url.get_secret_value(), serde=SERDE
-    ) as checkpointer:
-        await checkpointer.setup()
-        graph = build_graph(checkpointer=checkpointer)
-        result = await graph.ainvoke(
-            {
-                "messages": [],
-                "location": located["location"],
-                "location_error": located["location_error"],
-                "distance_in_miles": 10,
-                "arrive_by": next_weekday_at_nine(),
-            },
-            config,
-        )
+    run_id, result = await start_run(postcode, distance_in_miles=10)
     show(result, run_id)
 
 
 async def resume(run_id: str, decision: str) -> None:
-    if settings.database_url is None:
-        sys.exit("Error: DATABASE_URL is not set in .env")
-    config: RunnableConfig = {"configurable": {"thread_id": run_id}}
-    async with AsyncPostgresSaver.from_conn_string(
-        settings.database_url.get_secret_value(), serde=SERDE
-    ) as checkpointer:
-        graph = build_graph(checkpointer=checkpointer)
-        result = await graph.ainvoke(Command(resume=decision), config)
+    result = await resume_run(run_id, decision)
     show(result, run_id)
 
 

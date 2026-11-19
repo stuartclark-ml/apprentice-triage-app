@@ -2,11 +2,16 @@ from datetime import datetime
 
 import httpx
 import json
+import logging
 from pydantic import ValidationError
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_genai.chat_models import GoogleAPIError, GoogleRateLimitError
+from langchain_google_genai.chat_models import (
+    GoogleAPIError,
+    GoogleRateLimitError,
+    GoogleGenerativeAIError,
+)
 from langgraph.types import interrupt
 
 from apprenticeship_navigator.agents.routing import (
@@ -39,6 +44,8 @@ from apprenticeship_navigator.services.vacancy_api import (
 )
 
 from apprenticeship_navigator.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 async def locate(postcode: str) -> dict[str, SafeLocation | str | None]:
@@ -169,10 +176,12 @@ def plain_ending(state: AgentState) -> dict[str, str]:
 
 
 EXPLANATION_PROMPT = (
-    "You explain apprenticeship options to a young person in England. "
+    "You explain apprenticeship vacancies in England to a young person. "
     "Use only the facts provided; never invent vacancies, pay, dates or advice. "
     "If a fact is missing, leave it out rather than guess. "
-    "FEASIBLE means a comfortable journey; MARGINAL means reachable but long "
+    "You know nothing about the person, so never say they can apply, are eligible or would suit a role. "
+    "A warm, encouraging tone is welcome, but describe each journey only by its time in minutes and whether it is FEASIBLE or MARGINAL, and make no claim the facts do not state. "
+    "Feasible means say a possible journey; Marginal means say reachable but long "
     f"(up to {MARGINAL_MAX_MINUTES} minutes). "
     "For each vacancy, give the title, employer, journey time and closing date. "
     "Plain English, plain text, no headings, under 120 words."
@@ -194,9 +203,10 @@ async def explain(state: AgentState) -> dict[str, str]:
         response = await model.ainvoke(
             [SystemMessage(content=EXPLANATION_PROMPT), HumanMessage(content=facts)]
         )
-    except (GoogleRateLimitError, GoogleAPIError):
+    except (GoogleRateLimitError, GoogleGenerativeAIError, GoogleAPIError) as error:
+        logger.warning("Explanation unavailable: %s", type(error).__name__)
         return {
-            "explanation": "Explanation unavailable right now. The journey results above still stand."
+            "explanation": "Explanation unavailable right now. The journey results still stand."
         }
     return {"explanation": response.text}
 
@@ -214,7 +224,7 @@ async def review(state: AgentState) -> dict[str, str]:
         return {}
     if decision == "reject":
         return {
-            "explanation": "Explanation withheld after review. The journey results above still stand."
+            "explanation": "Explanation withheld after review. The journey results still stand."
         }
     raise ValueError(f"Review decision must be 'approve' or 'reject', got {decision!r}")
 
