@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SecretStr
 
@@ -25,3 +26,12 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# LangSmith reads its settings from the process environment, not from Settings.
+# Export only these three, and only when tracing is on and a key is present.
+if settings.langsmith_tracing and settings.langsmith_api_key is not None:
+    os.environ.setdefault("LANGSMITH_TRACING", "true")
+    os.environ.setdefault(
+        "LANGSMITH_API_KEY", settings.langsmith_api_key.get_secret_value()
+    )
+    os.environ.setdefault("LANGSMITH_PROJECT", settings.langsmith_project)

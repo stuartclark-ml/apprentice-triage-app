@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from typing import Any
+import os
 
 import pytest
 
@@ -31,3 +32,6 @@ def journey_disambiguation_payload() -> dict[str, Any]:
     )
     payload: dict[str, Any] = json.loads(text)
     return payload
+
+
+os.environ["LANGSMITH_TRACING"] = "false"  # tests never send traces
