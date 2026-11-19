@@ -242,6 +242,9 @@ def test_letter_is_built_only_from_card_facts() -> None:
     assert "11 December 2026" in letter.closing
     assert letter.greeting == "Dear Hiring Manager,"
     assert letter.subject == 'Enquiry about "IT Support Technician Apprentice"'
+    assert letter.opening.endswith(
+        "which I understand is due to start on 11 January 2027."
+    )
 
 
 def test_no_letter_without_employer() -> None:
@@ -254,7 +257,7 @@ def test_each_requirement_offers_two_alternative_claims() -> None:
     assert letter is not None
     claims = [section for section in letter.sections if section.is_claim]
     assert [claim.text for claim in claims] == [
-        "I meet the advert's requirement of GCSE English (4/C).",
-        "I am working towards the advert's requirement of GCSE English (4/C).",
+        "meet the advert's requirement of GCSE English (4/C)",
+        "am working towards the advert's requirement of GCSE English (4/C)",
     ]
     assert claims[0].group == claims[1].group == "2000062551-requirement-0"

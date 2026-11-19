@@ -21,6 +21,8 @@ class LetterDraft(BaseModel):
     subject: str
     greeting: str
     opening: str
+    interest: str  # always sent: "I am very interested in this role"
+    claims_lead: str  # joins the chosen claims onto interest: ", especially as I "
     sections: list[LetterSection]
     closing: str
     sign_off: str

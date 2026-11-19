@@ -165,41 +165,39 @@ def letter_draft(card: VacancyCard) -> LetterDraft | None:
     if not card.title or not card.employer:
         return None
     employer = " ".join(card.employer.split())
-    sections: list[LetterSection] = []
+    opening = (
+        f'I am writing about your vacancy "{card.title}" with {employer}, '
+        "advertised on Find an apprenticeship"
+    )
     if card.start_date:
-        sections.append(
-            LetterSection(
-                text=f"I understand the apprenticeship is due to start on {card.start_date}.",
-                is_claim=False,
-            )
-        )
+        opening += f", which I understand is due to start on {card.start_date}"
+    sections: list[LetterSection] = []
     for number, item in enumerate(card.must_have):
         group = f"{card.reference}-requirement-{number}"
         sections.append(
             LetterSection(
-                text=f"I meet the advert's requirement of {item}.",
+                text=f"meet the advert's requirement of {item}",
                 is_claim=True,
                 group=group,
             )
         )
         sections.append(
             LetterSection(
-                text=f"I am working towards the advert's requirement of {item}.",
+                text=f"am working towards the advert's requirement of {item}",
                 is_claim=True,
                 group=group,
             )
         )
-    closing = "Please could you tell me more about the role?"
+    closing = "I would be grateful for any further information about the role"
     if card.closing_date:
-        closing += f" I note applications close on {card.closing_date}."
+        closing += f" before applications close on {card.closing_date}"
     return LetterDraft(
         subject=f'Enquiry about "{card.title}"',
         greeting="Dear Hiring Manager,",
-        opening=(
-            f'I am writing about your vacancy "{card.title}" with {employer}, '
-            "which I found on Find an apprenticeship."
-        ),
+        opening=opening + ".",
+        interest="I am very interested in this role",
+        claims_lead=", especially as I ",
         sections=sections,
-        closing=closing,
+        closing=closing + ".",
         sign_off="Yours faithfully,\n[Your name]",
     )

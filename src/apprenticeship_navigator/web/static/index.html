@@ -38,6 +38,9 @@
   .review { display: flex; gap: .8rem; align-items: center; }
   .letter p { margin: .5rem 0; }
   .letter-section { flex-direction: row; align-items: baseline; gap: .4rem; margin: .3rem 0; font-size: 1rem; }
+  .email { max-width: 640px; width: 90vw; border: 1px solid #cbd2d9; border-radius: 6px; padding: 1rem 1.2rem; }
+  .email::backdrop { background: rgb(0 0 0 / .4); }
+  .email pre { white-space: pre-wrap; font-family: inherit; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -113,42 +116,94 @@ function addList(card, heading, items) {
   card.append(ul);
 }
 
-// The letter is assembled here in the browser. Which sections are ticked never
+// Joins phrases as "a", "a and b", or "a, b and c". This is the only wording
+// the browser adds; every phrase itself comes from the server.
+function joinWithAnd(items) {
+  if (items.length <= 1) return items.join("");
+  return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+}
+
+// The letter is assembled here in the browser. Which sections are chosen never
 // reaches the server, so the applicant's choices are not stored or traced.
 function renderLetter(letter) {
   const details = el("details", null, "letter");
   details.append(el("summary", "Enquiry letter (built from the advert by code, no model)"));
   details.append(el("p", letter.greeting));
   details.append(el("p", letter.opening));
-  const boxes = [];
+  details.append(el("p", letter.interest + " (plus any statements you choose below)", "muted"));
+  const choices = [];
+  const groupsStarted = new Set();
   for (const section of letter.sections) {
+    if (section.group && !groupsStarted.has(section.group)) {
+      groupsStarted.add(section.group);
+      const leaveOut = el("input");
+      leaveOut.type = "radio";
+      leaveOut.name = section.group;
+      leaveOut.checked = true;
+      const label = el("label", null, "letter-section");
+      label.append(leaveOut, el("span", "Leave out (choose a statement below only if it is true)", "muted"));
+      details.append(label);
+    }
+    const input = el("input");
+    if (section.group) {
+      input.type = "radio";
+      input.name = section.group;
+    } else {
+      input.type = "checkbox";
+      input.checked = true;
+    }
     const label = el("label", null, "letter-section");
-    const box = el("input");
-    box.type = "checkbox";
-    box.checked = !section.is_claim;
-    label.append(box, el("span", section.text));
-    if (section.is_claim) label.append(el("span", "(tick only if true)", "muted"));
+    label.append(input, el("span", "I " + section.text));
     details.append(label);
-    boxes.push([box, section.text]);
+    choices.push([input, section.text]);
   }
   details.append(el("p", letter.closing));
   details.append(el("pre", letter.sign_off));
-  const copy = el("button", "Copy letter");
-  copy.type = "button";
-  copy.addEventListener("click", async () => {
-    const chosen = boxes.filter(([box]) => box.checked).map(([, text]) => text);
-    const text = [letter.greeting, letter.opening, chosen.join(" "), letter.closing, letter.sign_off]
-      .filter(Boolean)
-      .join("\n\n");
+  const create = el("button", "Create email");
+  create.type = "button";
+  create.addEventListener("click", () => {
+    const chosen = choices.filter(([input]) => input.checked).map(([, text]) => text);
+    const interest = chosen.length === 0
+      ? letter.interest + "."
+      : letter.interest + letter.claims_lead + joinWithAnd(chosen) + ".";
+    const body = [letter.greeting, letter.opening, interest, letter.closing, letter.sign_off].join("\n\n");
+    showEmail(letter.subject, body);
+  });
+  details.append(create);
+  return details;
+}
+
+function copyButton(label, text) {
+  const button = el("button", label);
+  button.type = "button";
+  button.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(text);
-      copy.textContent = "Copied";
+      button.textContent = "Copied";
     } catch {
-      copy.textContent = "Copy failed: select the text instead";
+      button.textContent = "Copy failed: select the text instead";
     }
   });
-  details.append(copy);
-  return details;
+  return button;
+}
+
+// A pop-out showing the finished email. Nothing is sent: the applicant pastes
+// it into their own email program and adds the recipient and their name there.
+function showEmail(subject, body) {
+  const dialog = el("dialog", null, "email");
+  dialog.append(el("h2", "Your email is ready"));
+  dialog.append(el("p", "Paste it into your email program and add the recipient and your name there. Nothing is sent from this page.", "muted"));
+  dialog.append(el("p", "Subject: " + subject));
+  dialog.append(el("pre", body));
+  const close = el("button", "Close");
+  close.type = "button";
+  close.addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", () => dialog.remove());
+  const actions = el("div", null, "review");
+  actions.append(copyButton("Copy subject", subject), copyButton("Copy message", body), close);
+  dialog.append(actions);
+  document.body.append(dialog);
+  dialog.showModal();
 }
 
 function renderCard(data) {
