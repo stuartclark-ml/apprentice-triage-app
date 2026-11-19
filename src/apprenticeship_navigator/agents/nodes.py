@@ -2,11 +2,16 @@ from datetime import datetime
 
 import httpx
 import json
+import logging
 from pydantic import ValidationError
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_genai.chat_models import GoogleAPIError, GoogleRateLimitError
+from langchain_google_genai.chat_models import (
+    GoogleAPIError,
+    GoogleRateLimitError,
+    GoogleGenerativeAIError,
+)
 from langgraph.types import interrupt
 
 from apprenticeship_navigator.agents.routing import (
@@ -39,6 +44,8 @@ from apprenticeship_navigator.services.vacancy_api import (
 )
 
 from apprenticeship_navigator.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 async def locate(postcode: str) -> dict[str, SafeLocation | str | None]:
@@ -196,7 +203,8 @@ async def explain(state: AgentState) -> dict[str, str]:
         response = await model.ainvoke(
             [SystemMessage(content=EXPLANATION_PROMPT), HumanMessage(content=facts)]
         )
-    except (GoogleRateLimitError, GoogleAPIError):
+    except (GoogleRateLimitError, GoogleGenerativeAIError, GoogleAPIError) as error:
+        logger.warning("Explanation unavailable: %s", type(error).__name__)
         return {
             "explanation": "Explanation unavailable right now. The journey results still stand."
         }
