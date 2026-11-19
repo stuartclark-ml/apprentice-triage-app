@@ -192,3 +192,46 @@ structured flags, each quoting its source sentence, checked by the adviser
 sentence per vacancy above its requirements, reviewed per vacancy; the
 enquiry letter builder. Possibly a temporary, invite-only live version with
 a fixed take-down date.
+
+<!-- Append to docs/DECISIONS.md. Match the heading style and numbering of your existing sections 1–6. -->
+
+## 7. The web page boundary
+
+**Decision.** The web page talks to a FastAPI service through two endpoints (`POST /runs`, `POST /runs/{run_id}/decision`). The server holds every key, the database and the workflow; the page receives only the allow-listed applicant view.
+
+**Controls, each tested or checked in a real run:**
+- **No postcode in server logs.** The postcode travels in the request body, never in the address. The server log records method, path and status only (`POST /runs HTTP/1.1 200`), so the postcode is never written to a log.
+- **Decisions only on paused runs.** `resume_run` reads the run's saved state first; if the run is not waiting for review (already approved or rejected, or unknown), the endpoint refuses with 409 "This run is not awaiting review." Found by accident: before this, a reject sent to an approved run returned 200 with the approved text, so the rejection was silently ignored.
+- **Official advert links only.** The page creates an advert link only when the address starts with `https://www.findapprenticeship.service.gov.uk/`, so advert data can never supply a `javascript:` or look-alike address.
+- **No markup from data.** Every piece of server text is inserted with `textContent`, never `innerHTML`, so advert or model text cannot become markup or script.
+- **Input checks.** Postcode at most 10 characters, distance at least 1 mile, decision only `approve` or `reject` (otherwise 422, and the workflow is never called).
+
+**Trade-off.** No sign-in and no record of which adviser approved. Acceptable for a demonstration on one computer; a real service needs both, because the identity of the person who approved model output is part of accountability.
+
+## 8. The enquiry letter builder
+
+**Decision.** Each vacancy card offers an enquiry letter built entirely by code from the card's facts. No model is involved.
+
+**How it stays accurate.**
+- The skeleton (greeting, opening with title, employer and start date, closing with the closing date, sign-off) is filled from advert fields and cannot be wrong about the advert.
+- Statements about the applicant are offered per requirement as a choice of: leave out (default), "meet the advert's requirement of …", or "am working towards the advert's requirement of …". Nothing about the applicant is claimed unless they choose it.
+- The wording says "the advert's requirement of …" because advert lines such as "A Level Computing, Maths, IT, Science, Engineering (PASS)" do not say whether one subject or all are required. An earlier wording ("I have …") would have claimed all five; found by reviewing the letter as an employer would read it.
+- The letter has no recipient address and no applicant contact details. The applicant pastes it into their own email program.
+
+**Data minimisation.** The server sends every sentence once. The browser assembles the chosen ones. Which statements the applicant chose (which reveals their qualifications) never reaches the server, state, traces or the database.
+
+**Trade-off.** The browser joins the chosen phrases with commas and "and". That small joining rule is not covered by the Python tests; every phrase it joins is. Repetition such as "meet the advert's requirement of … and meet the advert's requirement of …" is accepted for this release.
+
+9. Cost
+
+Per run: one Gemini call (Gemini 3.5 Flash-Lite), plus free public services (vacancy search, journey planner, postcode lookup).
+
+Item	Basis	Cost
+Per run (measured)	Two LangSmith traces, 19 November 2026: 483 and 466 tokens in total (prompt, three vacancies' facts and the explanation)	$0.00044 and $0.00040
+Per 1,000 runs	Measured cost per run multiplied up	about $0.40 to $0.45
+Model price	Gemini 3.5 Flash-Lite: $0.30 per million input tokens, $2.50 per million output tokens (published rate, checked November 2026)	
+Database	Local PostgreSQL in Docker (release); Neon free tier (development)	$0
+Tracing	LangSmith free tier, optional	$0
+Hosting	None: runs on the user's own computer	$0
+
+Why it matters. The model is the only per-use cost, and it is small because it does one job with six facts. The expensive part of a service like this would be people (adviser review time), not the model, which is a reason to keep the model's job narrow and the adviser's check quick.
