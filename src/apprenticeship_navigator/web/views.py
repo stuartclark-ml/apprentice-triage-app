@@ -173,25 +173,33 @@ def letter_draft(card: VacancyCard) -> LetterDraft | None:
                 is_claim=False,
             )
         )
-    if card.must_have:
-        asked_for = "; ".join(card.must_have)
+    for number, item in enumerate(card.must_have):
+        group = f"{card.reference}-requirement-{number}"
         sections.append(
             LetterSection(
-                text=f"I note the advert asks for {asked_for}.", is_claim=False
+                text=f"I meet the advert's requirement of {item}.",
+                is_claim=True,
+                group=group,
             )
         )
-    for item in card.must_have:
-        sections.append(LetterSection(text=f"I have {item}.", is_claim=True))
-    closing = "Please could you tell me more about the role and how to apply"
+        sections.append(
+            LetterSection(
+                text=f"I am working towards the advert's requirement of {item}.",
+                is_claim=True,
+                group=group,
+            )
+        )
+    closing = "Please could you tell me more about the role?"
     if card.closing_date:
-        closing += f" before the closing date of {card.closing_date}"
+        closing += f" I note applications close on {card.closing_date}."
     return LetterDraft(
+        subject=f'Enquiry about "{card.title}"',
         greeting="Dear Hiring Manager,",
         opening=(
             f'I am writing about your vacancy "{card.title}" with {employer}, '
             "which I found on Find an apprenticeship."
         ),
         sections=sections,
-        closing=closing + "?",
+        closing=closing,
         sign_off="Yours faithfully,\n[Your name]",
     )

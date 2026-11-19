@@ -12,9 +12,13 @@ class LetterSection(BaseModel):
     is_claim: (
         bool  # claims about the applicant start unticked; job facts start included
     )
+    group: str | None = (
+        None  # claims in the same group are alternatives: choose at most one
+    )
 
 
 class LetterDraft(BaseModel):
+    subject: str
     greeting: str
     opening: str
     sections: list[LetterSection]
